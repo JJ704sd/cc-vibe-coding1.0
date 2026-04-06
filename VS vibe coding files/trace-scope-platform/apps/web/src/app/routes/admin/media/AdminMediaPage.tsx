@@ -13,6 +13,8 @@ export function AdminMediaPage() {
   const [imageCaption, setImageCaption] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [imageErrors, setImageErrors] = useState<Partial<Record<'caption' | 'url', string>>>({});
+  const [batchUrls, setBatchUrls] = useState('');
+  const [showBatch, setShowBatch] = useState(false);
 
   const selectedMediaSet = useMemo(
     () => state.mediaSets.find((mediaSet) => mediaSet.id === selectedMediaSetId) ?? null,
@@ -95,6 +97,35 @@ export function AdminMediaPage() {
     });
     setImageCaption('');
     setImageUrl('');
+    setImageErrors({});
+  }
+
+  function addBatchImages() {
+    if (!selectedMediaSet) {
+      return;
+    }
+
+    const urls = batchUrls.split('\n').map((url) => url.trim()).filter((url) => url.length > 0);
+    if (urls.length === 0) {
+      return;
+    }
+
+    const now = new Date().toISOString();
+    let sortOrder = selectedImages.length + 1;
+    urls.forEach((url) => {
+      saveMediaImage({
+        id: `image-${Date.now()}-${sortOrder}`,
+        mediaSetId: selectedMediaSet.id,
+        url: url,
+        thumbnailUrl: url,
+        altText: '',
+        caption: '',
+        sortOrder: sortOrder,
+        createdAt: now,
+      });
+      sortOrder++;
+    });
+    setBatchUrls('');
     setImageErrors({});
   }
 
@@ -181,11 +212,33 @@ export function AdminMediaPage() {
         <div className="panel" style={{ padding: '24px', display: 'grid', gap: '12px' }}>
           <h2 className="section-title">图片管理</h2>
           <p className="muted">当前选中媒体组：{selectedMediaSet?.title ?? '未选择'}</p>
-          <input value={imageCaption} onChange={(event) => setImageCaption(event.target.value)} placeholder="图片标题" disabled={!selectedMediaSet} />
-          {imageErrors.caption ? <p style={{ color: 'var(--danger)' }}>{imageErrors.caption}</p> : null}
-          <input value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder="图片 URL，留空则使用占位图" disabled={!selectedMediaSet} />
-          {imageErrors.url ? <p style={{ color: 'var(--danger)' }}>{imageErrors.url}</p> : null}
-          <button onClick={addImage} disabled={!selectedMediaSet}>新增图片</button>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button onClick={() => setShowBatch(false)} style={!showBatch ? { background: 'var(--accent)', color: 'white' } : {}}>单张添加</button>
+            <button onClick={() => setShowBatch(true)} style={showBatch ? { background: 'var(--accent)', color: 'white' } : {}}>批量添加</button>
+          </div>
+
+          {!showBatch ? (
+            <>
+              <input value={imageCaption} onChange={(event) => setImageCaption(event.target.value)} placeholder="图片标题" disabled={!selectedMediaSet} />
+              {imageErrors.caption ? <p style={{ color: 'var(--danger)' }}>{imageErrors.caption}</p> : null}
+              <input value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder="图片 URL，留空则使用占位图" disabled={!selectedMediaSet} />
+              {imageErrors.url ? <p style={{ color: 'var(--danger)' }}>{imageErrors.url}</p> : null}
+              <button onClick={addImage} disabled={!selectedMediaSet}>新增图片</button>
+            </>
+          ) : (
+            <>
+              <textarea
+                value={batchUrls}
+                onChange={(event) => setBatchUrls(event.target.value)}
+                placeholder="每行一个图片URL，批量添加多张图片"
+                disabled={!selectedMediaSet}
+                style={{ minHeight: '120px', resize: 'vertical' }}
+              />
+              <button onClick={addBatchImages} disabled={!selectedMediaSet || !batchUrls.trim()}>
+                批量添加 {batchUrls.split('\n').filter((u) => u.trim()).length} 张图片
+              </button>
+            </>
+          )}
           <div style={{ display: 'grid', gap: '12px' }}>
             {selectedImages.map((image, index) => (
               <div key={image.id} className="panel" style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>

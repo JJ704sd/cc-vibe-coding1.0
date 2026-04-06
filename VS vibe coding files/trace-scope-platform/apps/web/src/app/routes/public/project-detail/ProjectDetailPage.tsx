@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { LocationDetailPanel } from '@/components/project/LocationDetailPanel';
 import { MediaSetCard } from '@/components/project/MediaSetCard';
-import { MapView } from '@/components/map/MapView';
 import { usePublicData } from '@/services/storage/usePublicData';
 
 export function ProjectDetailPage() {
@@ -14,7 +13,6 @@ export function ProjectDetailPage() {
 
   const projectLocations = useMemo(() => state.locations.filter((location) => location.projectId === project?.id), [state.locations, project?.id]);
   const projectMediaSets = useMemo(() => state.mediaSets.filter((mediaSet) => mediaSet.projectId === project?.id), [state.mediaSets, project?.id]);
-  const projectRoutes = useMemo(() => state.routes.filter((route) => route.projectId === project?.id), [state.routes, project?.id]);
   const [selectedLocationId, setSelectedLocationId] = useState(projectLocations[0]?.id ?? null);
   const selectedLocation = projectLocations.find((location) => location.id === selectedLocationId) ?? null;
 
@@ -42,17 +40,40 @@ export function ProjectDetailPage() {
         <p className="muted mt-4" style={{ lineHeight: 1.7 }}>{project.description}</p>
       </section>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
-        <div className="glass" style={{ padding: '20px' }}>
-          <MapView
-            locations={projectLocations}
-            routes={projectRoutes}
-            selectedLocationId={selectedLocationId}
-            selectedRouteId={null}
-            onLocationSelect={setSelectedLocationId}
-          />
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
         <LocationDetailPanel location={selectedLocation} />
+        {projectLocations.length > 0 && (
+          <div className="glass" style={{ padding: '20px' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '1rem', color: 'var(--text)' }}>时空轨迹</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {projectLocations.map((location, index) => (
+                <div key={location.id} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '50%',
+                    background: location.id === selectedLocationId ? 'var(--accent)' : 'var(--glass-border)',
+                    color: location.id === selectedLocationId ? 'white' : 'var(--text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    flexShrink: 0,
+                  }}>
+                    {index + 1}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ color: 'var(--text)', fontSize: '0.9rem' }}>{location.name}</div>
+                    <div className="muted" style={{ fontSize: '0.75rem' }}>
+                      {location.latitude?.toFixed(4)}, {location.longitude?.toFixed(4)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <section>

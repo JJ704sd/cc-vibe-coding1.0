@@ -1,78 +1,46 @@
-import { useMemo, useState } from 'react';
-import { MapView } from '@/components/map/MapView';
-import { LocationMarkerLayer } from '@/components/map/LocationMarkerLayer';
-import { RoutePolylineLayer } from '@/components/map/RoutePolylineLayer';
+import { Link } from 'react-router-dom';
 import { usePublicData } from '@/services/storage/usePublicData';
 
 export function MapPage() {
   const reader = usePublicData();
   const locations = reader.getPublishedLocations();
-  const routes = reader.getPublishedRoutes();
-  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(locations[0]?.id ?? null);
-  const [selectedRouteId] = useState<string | null>(routes[0]?.id ?? null);
-
-  const selectedLocation = useMemo(
-    () => locations.find((location) => location.id === selectedLocationId) ?? null,
-    [locations, selectedLocationId],
-  );
-  const selectedRoute = useMemo(
-    () => routes.find((route) => route.id === selectedRouteId) ?? null,
-    [routes, selectedRouteId],
-  );
-
-  if (locations.length === 0) {
-    return (
-      <div className="page-shell" style={{ paddingBottom: '64px' }}>
-        <div className="glass" style={{ padding: '64px', textAlign: 'center' }}>
-          <div className="empty-state-icon">◉</div>
-          <h2 className="section-title mt-4">暂无可展示地图数据</h2>
-          <p className="muted mt-2">请先在后台创建并发布项目，再为项目补充地点和轨迹。</p>
-          <a href="/admin" className="btn-accent mt-4" style={{
-            display: 'inline-flex',
-            padding: '12px 24px',
-            textDecoration: 'none',
-            borderRadius: '16px',
-          }}>
-            前往后台
-          </a>
-        </div>
-      </div>
-    );
-  }
+  const projects = reader.getPublishedProjects();
 
   return (
     <div className="page-shell" style={{ display: 'grid', gap: '24px', paddingBottom: '64px' }}>
       <div className="glass animate-in" style={{ padding: '28px' }}>
         <h1 className="section-title">地图探索</h1>
         <p className="muted mt-2">
-          共 {locations.length} 个地点，{routes.length} 条轨迹
-          {selectedLocation && ` · 当前选中: ${selectedLocation.name}`}
+          共 {locations.length} 个地点，{projects.length} 个项目
         </p>
       </div>
 
-      <div className="glass" style={{ padding: '16px', borderRadius: '28px' }}>
-        <MapView
-          locations={locations}
-          routes={routes}
-          selectedLocationId={selectedLocationId}
-          selectedRouteId={selectedRouteId}
-          onLocationSelect={setSelectedLocationId}
-        />
+      <div className="glass" style={{ padding: '64px', textAlign: 'center' }}>
+        <div className="empty-state-icon" style={{ fontSize: '3rem', marginBottom: '16px' }}>◉</div>
+        <h2 className="section-title">地图功能已停用</h2>
+        <p className="muted mt-4">您可以在 3D 画廊首页查看所有项目，点击项目卡片了解详细信息和时空轨迹。</p>
+        <Link to="/" className="btn-accent mt-4" style={{
+          display: 'inline-flex',
+          padding: '12px 24px',
+          textDecoration: 'none',
+          borderRadius: '16px',
+        }}>
+          返回 3D 画廊
+        </Link>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-        <div className="glass" style={{ padding: '20px' }}>
-          <LocationMarkerLayer
-            locations={locations}
-            selectedLocationName={selectedLocation?.name ?? null}
-          />
-        </div>
-        <div className="glass" style={{ padding: '20px' }}>
-          <RoutePolylineLayer
-            routes={routes}
-            selectedRouteName={selectedRoute?.name ?? null}
-          />
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
+        {projects.slice(0, 6).map((project) => (
+          <Link key={project.id} to={`/projects/${project.id}`} className="glass" style={{
+            padding: '20px',
+            textDecoration: 'none',
+            borderRadius: '20px',
+            transition: 'transform 0.2s ease',
+          }}>
+            <h3 style={{ color: 'var(--text)', margin: '0 0 8px 0', fontSize: '1rem' }}>{project.title}</h3>
+            <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>{project.summary || '暂无描述'}</p>
+          </Link>
+        ))}
       </div>
     </div>
   );
