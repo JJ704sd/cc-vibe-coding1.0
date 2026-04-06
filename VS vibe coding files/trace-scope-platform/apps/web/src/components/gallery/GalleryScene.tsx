@@ -280,6 +280,10 @@ export function GalleryScene({
     scene.add(skyMesh);
     skyDomeRef.current = skyMesh;
 
+    // Frustum for culling
+    const frustum = new THREE.Frustum();
+    const projScreenMatrix = new THREE.Matrix4();
+
     // Animation loop
     let raf: number;
     let time = 0;
@@ -288,13 +292,22 @@ export function GalleryScene({
       time += 0.005;
       skyUniforms.uTime.value = time;
 
-      // Animate cards
+      // Update frustum for culling
+      camera.updateMatrixWorld();
+      frustum.setFromProjectionMatrix(projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+
+      // Animate and cull cards
       cardRefs.current.forEach((group, id) => {
         const idx = projects.findIndex((p) => p.id === id);
         if (idx === -1) return;
         const pos = cardPositions[idx];
         if (!pos) return;
         group.position.y = pos.y + Math.sin(time * 0.8 + idx * 0.7) * 12;
+
+        // Frustum culling - check if card center is in view
+        const worldPos = new THREE.Vector3(pos.x, group.position.y, pos.z);
+        const inFrustum = frustum.containsPoint(worldPos);
+        group.visible = inFrustum;
       });
 
       controls.update();
