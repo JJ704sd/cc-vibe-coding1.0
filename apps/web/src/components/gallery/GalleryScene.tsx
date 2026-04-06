@@ -445,12 +445,31 @@ export function GalleryScene({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projects, locations, cardPositions, nightMode]);
 
-  // Click detection
+  // Click/tap detection with pointer events for mobile
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    function onClick(e: MouseEvent) {
+    let isDragging = false;
+    let pointerStartX = 0;
+    let pointerStartY = 0;
+
+    function onPointerDown(e: PointerEvent) {
+      isDragging = false;
+      pointerStartX = e.clientX;
+      pointerStartY = e.clientY;
+    }
+
+    function onPointerMove(e: PointerEvent) {
+      const dx = e.clientX - pointerStartX;
+      const dy = e.clientY - pointerStartY;
+      if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+        isDragging = true;
+      }
+    }
+
+    function onPointerUp(e: PointerEvent) {
+      if (isDragging) return;
       if (!cameraRef.current || !rendererRef.current || !sceneRef.current) return;
       const c = containerRef.current;
       if (!c) return;
@@ -476,14 +495,20 @@ export function GalleryScene({
       }
     }
 
-    container.addEventListener('click', onClick);
-    return () => container.removeEventListener('click', onClick);
+    container.addEventListener('pointerdown', onPointerDown);
+    container.addEventListener('pointermove', onPointerMove);
+    container.addEventListener('pointerup', onPointerUp);
+    return () => {
+      container.removeEventListener('pointerdown', onPointerDown);
+      container.removeEventListener('pointermove', onPointerMove);
+      container.removeEventListener('pointerup', onPointerUp);
+    };
   }, [projects, onProjectSelect, raycaster, mouse]);
 
   return (
     <div
       ref={containerRef}
-      style={{ width: '100%', height: '100%', cursor: 'grab' }}
+      style={{ width: '100%', height: '100%', cursor: 'grab', touchAction: 'none' }}
       onPointerDown={(e) => {
         if (e.button === 0) e.currentTarget.style.cursor = 'grabbing';
       }}
