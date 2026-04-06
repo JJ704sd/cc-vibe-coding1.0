@@ -30,6 +30,7 @@ export function SpinViewPage() {
   }
 
   return (
+    <div>
       <div className="glass animate-in" style={{ padding: '28px', marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
           <span className="badge badge-warm">spin360</span>
@@ -38,5 +39,6 @@ export function SpinViewPage() {
         <p className="muted">{mediaSet.description}</p>
       </div>
       <SpinViewer images={images} />
+    </div>
   );
 }

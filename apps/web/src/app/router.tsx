@@ -4,7 +4,7 @@ import { PublicLayout } from '@/components/site/PublicLayout';
 import { AuthProvider } from '@/services/auth/authContext';
 import { RequireAuth } from '@/components/admin/RequireAuth';
 
-const HomePage = lazy(() => import('@/app/routes/public/home/HomePage').then((module) => ({ default: module.HomePage })));
+const HomePage = lazy(() => import('@/app/routes/gallery/GalleryHome').then((module) => ({ default: module.GalleryHome })));
 const ProjectsPage = lazy(() => import('@/app/routes/public/projects/ProjectsPage').then((module) => ({ default: module.ProjectsPage })));
 const ProjectDetailPage = lazy(() => import('@/app/routes/public/project-detail/ProjectDetailPage').then((module) => ({ default: module.ProjectDetailPage })));
 const MapPage = lazy(() => import('@/app/routes/public/map/MapPage').then((module) => ({ default: module.MapPage })));
