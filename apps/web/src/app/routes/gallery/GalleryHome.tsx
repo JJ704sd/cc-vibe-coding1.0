@@ -13,10 +13,23 @@ export function GalleryHome() {
     const h = new Date().getHours();
     return h < 6 || h >= 19;
   });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
 
   const reader = usePublicData();
   const state = reader.getState();
   const publishedProjects = reader.getPublishedProjects();
+
+  // Filter projects by search query
+  const filteredProjects = publishedProjects.filter((project) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      project.title.toLowerCase().includes(query) ||
+      project.summary?.toLowerCase().includes(query) ||
+      project.tags?.some((tag) => tag.toLowerCase().includes(query))
+    );
+  });
 
   // Night mode auto-refresh every minute
   useEffect(() => {
@@ -49,7 +62,7 @@ export function GalleryHome() {
       {/* 3D Scene */}
       {!showLoader && (
         <GalleryScene
-          projects={publishedProjects}
+          projects={filteredProjects}
           locations={state.locations}
           mediaSets={state.mediaSets}
           nightMode={nightMode}
@@ -111,6 +124,51 @@ export function GalleryHome() {
               alignItems: 'center',
             }}
           >
+            {/* Search toggle */}
+            <button
+              onClick={() => setShowSearch(!showSearch)}
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '14px',
+                background: showSearch ? 'rgba(91, 141, 238, 0.3)' : nightMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)',
+                border: `1px solid ${showSearch ? 'rgba(91, 141, 238, 0.5)' : nightMode ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.25)'}`,
+                color: nightMode ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.85)',
+                fontSize: '1rem',
+                cursor: 'pointer',
+                backdropFilter: 'blur(12px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.3s ease',
+              }}
+              title="搜索项目"
+            >
+              ⌕
+            </button>
+
+            {/* Search bar */}
+            {showSearch && (
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="搜索项目..."
+                autoFocus
+                style={{
+                  width: '180px',
+                  padding: '8px 14px',
+                  borderRadius: '14px',
+                  background: nightMode ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.9)',
+                  border: `1px solid ${nightMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)'}`,
+                  color: nightMode ? 'white' : 'black',
+                  fontSize: '0.85rem',
+                  outline: 'none',
+                  backdropFilter: 'blur(12px)',
+                }}
+              />
+            )}
+
             {/* Night mode toggle */}
             <button
               onClick={() => setNightMode((n) => !n)}
@@ -185,7 +243,7 @@ export function GalleryHome() {
               fontFamily: 'monospace',
             }}
           >
-            {publishedProjects.length} projects · drag to explore
+            {searchQuery ? `${filteredProjects.length} / ${publishedProjects.length}` : publishedProjects.length} projects · drag to explore
           </div>
 
           {/* Bottom-left: Hint */}
