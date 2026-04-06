@@ -8,21 +8,27 @@ export function GalleryViewer({ images }: { images: MediaImage[] }) {
 
   if (orderedImages.length === 0) {
     return (
-      <div className="panel" style={{ padding: '48px', textAlign: 'center' }}>
-        <div className="empty-state-icon" style={{ fontSize: '3rem' }}>🖼</div>
+      <div className="glass" style={{ padding: '64px', textAlign: 'center' }}>
+        <div className="empty-state-icon">◇</div>
         <p className="muted mt-4">当前媒体组没有可用图片</p>
       </div>
     );
   }
 
   return (
-    <div className="panel" style={{ padding: '28px' }}>
+    <div className="glass animate-in" style={{ padding: '28px' }}>
       <div style={{ marginBottom: '16px' }}>
         <h2 className="section-title-sm" style={{ margin: 0 }}>图集查看器</h2>
         <p className="muted mt-2" style={{ margin: 0 }}>共 {orderedImages.length} 张图片</p>
       </div>
 
-      <div style={{ borderRadius: '20px', overflow: 'hidden', aspectRatio: '4/3', background: 'var(--panel-bg)', marginBottom: '16px' }}>
+      <div style={{
+        borderRadius: '24px',
+        overflow: 'hidden',
+        aspectRatio: '4/3',
+        background: 'rgba(0,0,0,0.06)',
+        marginBottom: '16px',
+      }}>
         <img
           src={activeImage?.url}
           alt={activeImage?.altText ?? '图集图片'}
@@ -31,10 +37,12 @@ export function GalleryViewer({ images }: { images: MediaImage[] }) {
       </div>
 
       {activeImage?.caption && (
-        <p className="muted" style={{ textAlign: 'center', marginBottom: '16px' }}>{activeImage.caption}</p>
+        <p className="muted" style={{ textAlign: 'center', marginBottom: '16px', fontStyle: 'italic' }}>
+          {activeImage.caption}
+        </p>
       )}
 
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
         {orderedImages.map((image) => (
           <button
             key={image.id}
@@ -43,13 +51,21 @@ export function GalleryViewer({ images }: { images: MediaImage[] }) {
               width: '64px',
               height: '48px',
               padding: 0,
-              borderRadius: '10px',
+              borderRadius: '12px',
               overflow: 'hidden',
-              border: image.id === activeId ? '2px solid var(--accent)' : '2px solid var(--panel-border)',
-              opacity: image.id === activeId ? 1 : 0.6,
+              border: image.id === activeId
+                ? '2px solid var(--accent)'
+                : '2px solid var(--glass-border)',
+              opacity: image.id === activeId ? 1 : 0.5,
+              transition: 'all 0.2s ease',
+              cursor: 'pointer',
             }}
           >
-            <img src={image.thumbnailUrl} alt={image.altText} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img
+              src={image.thumbnailUrl}
+              alt={image.altText}
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
           </button>
         ))}
       </div>
