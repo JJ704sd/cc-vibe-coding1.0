@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { LocationDetailPanel } from '@/components/project/LocationDetailPanel';
 import { MediaSetCard } from '@/components/project/MediaSetCard';
@@ -20,21 +20,79 @@ export function ProjectDetailPage() {
 
   if (!project) {
     return (
-      <div className="page-shell" style={{ paddingBottom: '48px' }}>
-        <section className="panel" style={{ padding: '24px' }}>
-          <h1 className="section-title">未找到可展示项目</h1>
-          <p className="muted">当前没有已发布项目可供前台展示。</p>
-        </section>
+      <div className="glass" style={{ padding: '48px', textAlign: 'center' }}>
+        <div className="empty-state-icon">◈</div>
+        <h2 className="section-title mt-4">未找到可展示项目</h2>
+        <p className="muted mt-2">当前没有已发布项目可供前台展示。</p>
       </div>
     );
   }
 
   return (
-    <div className="page-shell" style={{ display: 'grid', gap: '24px', paddingBottom: '48px' }}>
-      <section className="panel" style={{ padding: '28px' }}><p className="muted" style={{ textTransform: 'uppercase', letterSpacing: '0.16em' }}>项目详情</p><h1 className="section-title">{project.title}</h1><p className="muted">{project.description}</p></section>
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}><MapView locations={projectLocations} routes={projectRoutes} /><LocationDetailPanel location={selectedLocation} /></div>
-      <section><h2 className="section-title">地点列表</h2><div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '16px' }}>{projectLocations.map((location) => (<button key={location.id} className="panel" onClick={() => setSelectedLocationId(location.id)} style={{ padding: '12px 16px', borderColor: location.id === selectedLocationId ? 'var(--accent)' : 'var(--panel-border)' }}>{location.name}</button>))}</div></section>
-      <section><h2 className="section-title">媒体组列表</h2><div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px', marginTop: '16px' }}>{projectMediaSets.map((mediaSet) => (<MediaSetCard key={mediaSet.id} mediaSet={mediaSet} />))}</div></section>
+    <div className="page-shell" style={{ display: 'grid', gap: '24px', paddingBottom: '64px' }}>
+      <section className="glass animate-in" style={{ padding: '32px' }}>
+        <p className="muted" style={{
+          textTransform: 'uppercase',
+          letterSpacing: '0.16em',
+          fontSize: '0.7rem',
+        }}>
+          项目详情
+        </p>
+        <h1 className="section-title" style={{ marginTop: '8px' }}>{project.title}</h1>
+        <p className="muted mt-4" style={{ lineHeight: 1.7 }}>{project.description}</p>
+      </section>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
+        <div className="glass" style={{ padding: '20px' }}>
+          <MapView
+            locations={projectLocations}
+            routes={projectRoutes}
+            selectedLocationId={selectedLocationId}
+            selectedRouteId={null}
+            onLocationSelect={setSelectedLocationId}
+          />
+        </div>
+        <LocationDetailPanel location={selectedLocation} />
+      </div>
+
+      <section>
+        <h2 className="section-title" style={{ fontSize: '1.4rem', marginBottom: '16px' }}>地点列表</h2>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+          {projectLocations.map((location) => (
+            <button
+              key={location.id}
+              className="glass"
+              onClick={() => setSelectedLocationId(location.id)}
+              style={{
+                padding: '10px 18px',
+                borderRadius: '16px',
+                border: location.id === selectedLocationId
+                  ? '1px solid var(--accent)'
+                  : '1px solid var(--glass-border)',
+                background: location.id === selectedLocationId
+                  ? 'rgba(91, 141, 238, 0.15)'
+                  : 'var(--glass-bg)',
+                color: location.id === selectedLocationId
+                  ? 'var(--accent)'
+                  : 'var(--text-secondary)',
+                cursor: 'pointer',
+                transition: 'all 0.25s ease',
+              }}
+            >
+              {location.name}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <h2 className="section-title" style={{ fontSize: '1.4rem', marginBottom: '16px' }}>媒体组列表</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px' }}>
+          {projectMediaSets.map((mediaSet) => (
+            <MediaSetCard key={mediaSet.id} mediaSet={mediaSet} />
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
