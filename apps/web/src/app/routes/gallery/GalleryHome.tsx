@@ -47,6 +47,10 @@ export function GalleryHome() {
     setSelectedProject(null);
   }, []);
 
+  const handleLoaderComplete = useCallback(() => {
+    setShowLoader(false);
+  }, []);
+
   return (
     <div
       style={{
@@ -57,7 +61,7 @@ export function GalleryHome() {
         transition: 'background 2s ease',
       }}
     >
-      {showLoader && <LoadingScreen onComplete={() => setShowLoader(false)} />}
+      {showLoader && <LoadingScreen nightMode={nightMode} onComplete={handleLoaderComplete} />}
 
       {/* 3D Scene */}
       {!showLoader && (
