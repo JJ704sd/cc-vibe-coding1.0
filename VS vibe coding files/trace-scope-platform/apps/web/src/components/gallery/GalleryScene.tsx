@@ -154,6 +154,100 @@ export function GalleryScene({
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
+    // ── Draw real-time clock on canvas overlay until 3D scene renders ──
+    const clockOverlay = document.getElementById('scene-clock-overlay') as HTMLCanvasElement;
+    let clockRaf: number;
+    if (clockOverlay) {
+      const cw = 120, ch = 120;
+      clockOverlay.width = cw;
+      clockOverlay.height = ch;
+      const ctx2d = clockOverlay.getContext('2d')!;
+
+      function drawClock() {
+        const now = new Date();
+        const sec = now.getSeconds() + now.getMilliseconds() / 1000;
+        const min = now.getMinutes() + sec / 60;
+        const hr  = (now.getHours() % 12) + min / 60;
+        const cx = cw / 2, cy = ch / 2, r = cw / 2 - 6;
+
+        ctx2d.clearRect(0, 0, cw, ch);
+
+        // Face
+        const grad = ctx2d.createRadialGradient(cx - 6, cy - 6, 0, cx, cy, r);
+        grad.addColorStop(0, 'rgba(255,255,255,0.96)');
+        grad.addColorStop(0.4, 'rgba(240,248,255,0.85)');
+        grad.addColorStop(1, 'rgba(210,225,245,0.7)');
+        ctx2d.beginPath();
+        ctx2d.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx2d.fillStyle = grad;
+        ctx2d.fill();
+        ctx2d.strokeStyle = 'rgba(160,180,210,0.35)';
+        ctx2d.lineWidth = 1;
+        ctx2d.stroke();
+
+        // Outer ring
+        ctx2d.beginPath();
+        ctx2d.arc(cx, cy, r - 4, 0, Math.PI * 2);
+        ctx2d.strokeStyle = 'rgba(160,180,210,0.25)';
+        ctx2d.lineWidth = 0.8;
+        ctx2d.stroke();
+
+        // Tick marks
+        for (let i = 0; i < 12; i++) {
+          const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
+          const inner = i % 3 === 0 ? r - 12 : r - 8;
+          ctx2d.beginPath();
+          ctx2d.moveTo(cx + Math.cos(a) * inner, cy + Math.sin(a) * inner);
+          ctx2d.lineTo(cx + Math.cos(a) * (r - 4), cy + Math.sin(a) * (r - 4));
+          ctx2d.strokeStyle = i % 3 === 0 ? 'rgba(120,100,140,0.55)' : 'rgba(120,100,140,0.25)';
+          ctx2d.lineWidth = i % 3 === 0 ? 1.5 : 1;
+          ctx2d.stroke();
+        }
+
+        // Hour hand
+        const ha = (hr / 12) * Math.PI * 2 - Math.PI / 2;
+        ctx2d.beginPath();
+        ctx2d.moveTo(cx, cy);
+        ctx2d.lineTo(cx + Math.cos(ha) * r * 0.48, cy + Math.sin(ha) * r * 0.48);
+        ctx2d.strokeStyle = 'rgba(100,80,120,0.75)';
+        ctx2d.lineWidth = 2.5;
+        ctx2d.lineCap = 'round';
+        ctx2d.stroke();
+
+        // Minute hand
+        const ma = (min / 60) * Math.PI * 2 - Math.PI / 2;
+        ctx2d.beginPath();
+        ctx2d.moveTo(cx, cy);
+        ctx2d.lineTo(cx + Math.cos(ma) * r * 0.72, cy + Math.sin(ma) * r * 0.72);
+        ctx2d.strokeStyle = 'rgba(100,80,120,0.65)';
+        ctx2d.lineWidth = 1.8;
+        ctx2d.lineCap = 'round';
+        ctx2d.stroke();
+
+        // Second hand
+        const sa = (sec / 60) * Math.PI * 2 - Math.PI / 2;
+        ctx2d.beginPath();
+        ctx2d.moveTo(cx, cy);
+        ctx2d.lineTo(cx + Math.cos(sa) * r * 0.82, cy + Math.sin(sa) * r * 0.82);
+        ctx2d.strokeStyle = '#f85a4e';
+        ctx2d.lineWidth = 1;
+        ctx2d.lineCap = 'round';
+        ctx2d.stroke();
+
+        // Center dot
+        ctx2d.beginPath();
+        ctx2d.arc(cx, cy, 3, 0, Math.PI * 2);
+        ctx2d.fillStyle = '#f85a4e';
+        ctx2d.fill();
+
+        clockRaf = requestAnimationFrame(drawClock);
+      }
+      drawClock();
+
+      // Store cleanup to stop clock animation once 3D scene is rendering
+      clockOverlay.dataset.animating = 'true';
+    }
+
     const scene = new THREE.Scene();
     sceneRef.current = scene;
 
@@ -294,6 +388,10 @@ export function GalleryScene({
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
       }
+      // Stop clock overlay animation
+      cancelAnimationFrame(clockRaf);
+      const co = document.getElementById('scene-clock-overlay');
+      if (co) co.remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -467,7 +565,31 @@ export function GalleryScene({
   return (
     <div
       ref={containerRef}
-      style={{ width: '100%', height: '100%', cursor: 'grab', touchAction: 'none' }}
-    />
+      style={{ width: '100%', height: '100%', cursor: 'grab', touchAction: 'none', position: 'relative' }}
+    >
+      {/* Clock overlay: shrinking real-time clock until 3D scene appears */}
+      <canvas
+        id="scene-clock-overlay"
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%) scale(2)',
+          transformOrigin: 'center center',
+          pointerEvents: 'none',
+          zIndex: 5,
+          opacity: 1,
+          animation: 'clockShrink 3.2s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+        }}
+      />
+      <style>{`
+        @keyframes clockShrink {
+          0%   { transform: translate(-50%, -50%) scale(2);   opacity: 1; }
+          60%  { transform: translate(-50%, -50%) scale(1);   opacity: 1; }
+          85%  { transform: translate(-50%, -50%) scale(1);   opacity: 1; }
+          100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+        }
+      `}</style>
+    </div>
   );
 }
