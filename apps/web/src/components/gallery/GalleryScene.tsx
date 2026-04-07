@@ -564,27 +564,30 @@ export function GalleryScene({
       ref={containerRef}
       style={{ width: '100%', height: '100%', cursor: 'grab', touchAction: 'none', position: 'relative' }}
     >
-      {/* Clock overlay: shrinking real-time clock until 3D scene appears */}
-      <canvas
-        id="scene-clock-overlay"
+      {/* Wrapper handles corner float; canvas just scales */}
+      <div
+        id="clock-wrapper"
         style={{
           position: 'absolute',
           top: '50%',
           left: '50%',
-          transform: 'translate(-50%, -50%) scale(2)',
-          transformOrigin: 'center center',
           pointerEvents: 'none',
           zIndex: 5,
-          opacity: 1,
-          animation: 'clockShrink 3s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+          transform: 'translate(-50%, -50%)',
+          animation: 'clockFloat 3s cubic-bezier(0.4, 0, 0.2, 1) forwards',
         }}
-      />
+      >
+        <canvas
+          id="scene-clock-overlay"
+          style={{ display: 'block' }}
+        />
+      </div>
       <style>{`
-        @keyframes clockShrink {
-          0%   { transform: translate(-50%, -50%) scale(2);   opacity: 1; }
-          60%  { transform: translate(-50%, -50%) scale(1);   opacity: 1; }
-          85%  { transform: translate(-50%, -50%) scale(1);   opacity: 1; }
-          100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+        @keyframes clockFloat {
+          0%   { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }
+          12%  { transform: translate(-50%, -50%) scale(2.2); opacity: 1; }
+          55%  { transform: translate(-50%, -50%) scale(1.0); opacity: 1; }
+          100% { transform: translate(calc(50vw - 68px), calc(50vh - 68px)) scale(0.5); opacity: 0.85; }
         }
       `}</style>
     </div>
