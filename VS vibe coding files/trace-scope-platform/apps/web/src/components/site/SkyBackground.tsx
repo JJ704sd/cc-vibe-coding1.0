@@ -1,22 +1,33 @@
-import { createElement, useMemo } from 'react';
 import * as THREE from 'three';
 
-interface SkyBackgroundProps {
-  nightFactor: number; // 0 = day, 1 = night
-  time?: number;
+interface SkyBackgroundResult {
+  mesh: THREE.Mesh;
+  uniforms: {
+    uSunElev: { value: number };
+    uNightFactor: { value: number };
+    uTime: { value: number };
+    uSunDir: { value: THREE.Vector3 };
+    uMobile: { value: number };
+  };
 }
 
-export function SkyBackground({ nightFactor, time = 0 }: SkyBackgroundProps) {
-  const skyUniforms = useMemo(() => ({
-    uSunElev: { value: 0.5 },
-    uNightFactor: { value: nightFactor },
-    uTime: { value: time },
-    uSunDir: { value: new THREE.Vector3(0.3, 0.5, 0.5) },
-    uMobile: { value: /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ? 1.0 : 0.0 }
-  }), []);
+/**
+ * Creates a sky dome mesh with full starfield, milky way, clouds, and day/night cycle.
+ * Call this once in GalleryScene's useEffect, add mesh to scene, and update uniforms in the animation loop.
+ */
+export function createSkyBackground(): SkyBackgroundResult {
+  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 
-  const skyMaterial = useMemo(() => new THREE.ShaderMaterial({
-    uniforms: skyUniforms,
+  const uniforms = {
+    uSunElev: { value: 0.5 },
+    uNightFactor: { value: 0.0 },
+    uTime: { value: 0.0 },
+    uSunDir: { value: new THREE.Vector3(0.3, 0.5, 0.5) },
+    uMobile: { value: isMobile ? 1.0 : 0.0 },
+  };
+
+  const skyMaterial = new THREE.ShaderMaterial({
+    uniforms,
     vertexShader: `
       varying vec3 vWorldPosition;
       void main() {
@@ -244,17 +255,12 @@ export function SkyBackground({ nightFactor, time = 0 }: SkyBackgroundProps) {
     `,
     side: THREE.BackSide,
     depthWrite: false,
-  }), [skyUniforms]);
+  });
 
-  // Use React Three Fiber pattern with primitive element
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mesh = useMemo(() => {
-    const sphere = new THREE.SphereGeometry(8000, 32, 32);
-    const m = new THREE.Mesh(sphere, skyMaterial);
-    m.renderOrder = -2;
-    return m;
-  }, [skyUniforms]);
+  const sphere = new THREE.SphereGeometry(8000, 32, 32);
+  const mesh = new THREE.Mesh(sphere, skyMaterial);
+  mesh.renderOrder = -2;
+  mesh.frustumCulled = false;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return createElement('primitive' as any, { object: mesh });
+  return { mesh, uniforms };
 }

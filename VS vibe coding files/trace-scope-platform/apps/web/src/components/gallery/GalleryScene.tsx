@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback, useMemo } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Project, Location } from '@/types/domain';
-import { SkyBackground } from '@/components/site/SkyBackground';
+import { createSkyBackground } from '@/components/site/SkyBackground';
 
 const CARD_SIZE = 280;
 const MAX_ROWS = 4;
@@ -30,12 +30,15 @@ export function GalleryScene({
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const artworkPivotRef = useRef<THREE.Group | null>(null);
+  const skyUniformsRef = useRef<ReturnType<typeof createSkyBackground>['uniforms'] | null>(null);
   const cardDataRef = useRef<Array<{
     group: THREE.Group;
     initialPos: THREE.Vector3;
     initialRot: THREE.Euler;
     phase: number;
     driftAmp: number;
+    imgMat: THREE.MeshStandardMaterial;
+    backMat: THREE.MeshStandardMaterial;
   }>>([]);
 
   const raycaster = useMemo(() => new THREE.Raycaster(), []);
@@ -180,6 +183,11 @@ export function GalleryScene({
     scene.add(pivot);
     artworkPivotRef.current = pivot;
 
+    // Sky dome
+    const { mesh: skyMesh, uniforms: skyUniforms } = createSkyBackground();
+    scene.add(skyMesh);
+    skyUniformsRef.current = skyUniforms;
+
     // Frustum
     const frustum = new THREE.Frustum();
     const projScreenMatrix = new THREE.Matrix4();
@@ -201,6 +209,12 @@ export function GalleryScene({
       raf = requestAnimationFrame(animate);
       const elapsed = clock.getElapsedTime();
       time += 0.005;
+
+      // Update sky uniforms every frame
+      if (skyUniformsRef.current) {
+        skyUniformsRef.current.uTime.value = time;
+        skyUniformsRef.current.uNightFactor.value = nightMode ? 1.0 : 0.0;
+      }
 
       // Intro cinematic
       if (introActive) {
@@ -305,7 +319,11 @@ export function GalleryScene({
     const pivot = artworkPivotRef.current;
     if (!pivot) return;
 
-    // Clear existing cards
+    // Clear existing cards and dispose textures/materials
+    cardDataRef.current.forEach((data) => {
+      data.imgMat.dispose();
+      data.backMat.dispose();
+    });
     while (pivot.children.length > 0) {
       pivot.remove(pivot.children[0]);
     }
@@ -319,7 +337,7 @@ export function GalleryScene({
       group.position.set(pos.x, pos.y, pos.z);
 
       // Front face — image card
-      let imgMat: THREE.Material;
+      let imgMat: THREE.MeshStandardMaterial;
       if (project.coverImage) {
         const tex = textureLoader.load(project.coverImage);
         tex.colorSpace = THREE.SRGBColorSpace;
@@ -377,6 +395,8 @@ export function GalleryScene({
         initialRot,
         phase: Math.random() * Math.PI * 2,
         driftAmp: 8 + Math.random() * 12,
+        imgMat,
+        backMat,
       });
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -444,9 +464,6 @@ export function GalleryScene({
     <div
       ref={containerRef}
       style={{ width: '100%', height: '100%', cursor: 'grab', touchAction: 'none' }}
-    >
-      {/* Sky dome */}
-      <SkyBackground nightFactor={nightFactor} time={0} />
-    </div>
+    />
   );
 }
