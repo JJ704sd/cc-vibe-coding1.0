@@ -8,10 +8,25 @@
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Noto+Sans+SC:wght@300;400&family=Parisienne&family=Work+Sans:wght@300;400&display=swap" rel="stylesheet">
     <title>Trace Scope Platform</title>
     <style>
-      html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
-      body { background: linear-gradient(to bottom, #87CEEB 0%, #FFD9DA 55%, #f85a4e 100%); }
+      html, body {
+        margin: 0; padding: 0;
+        width: 100%; height: 100%;
+        overflow: hidden;
+      }
+      body {
+        background: linear-gradient(to bottom, #87CEEB 0%, #FFD9DA 55%, #f85a4e 100%);
+      }
+      #root {
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+        position: fixed;
+        top: 0; left: 0;
+        /* Ensure sky gradient is always painted under #root content */
+        background: linear-gradient(to bottom, #87CEEB 0%, #FFD9DA 55%, #f85a4e 100%);
+      }
 
-      /* ── Pre-load splash (outside #root, persists during React init) ── */
+      /* ── Pre-load splash (sibling to #root — never erased by React) ── */
       #splash {
         position: fixed;
         inset: 0;
@@ -21,9 +36,17 @@
         align-items: center;
         justify-content: center;
         gap: 28px;
-        transition: opacity 0.9s ease;
+        transition: opacity 1.2s ease;
       }
       #splash.fade-out { opacity: 0; pointer-events: none; }
+
+      /* Sky behind clock (same gradient as body) */
+      .sky-bg {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        background: linear-gradient(to bottom, #87CEEB 0%, #FFD9DA 55%, #f85a4e 100%);
+      }
 
       /* Clock face */
       .clock {
@@ -118,7 +141,6 @@
         z-index: 6;
       }
 
-      /* Brand text + progress bar */
       .loader-text {
         font-family: 'Cormorant Garamond', 'Georgia', serif;
         font-size: 13px;
@@ -157,8 +179,9 @@
     </style>
   </head>
   <body>
-    <!-- Pre-load splash — lives outside #root so React can't erase it -->
+    <!-- Pre-load splash — sibling to #root, never touched by React -->
     <div id="splash">
+      <div class="sky-bg"></div>
       <div class="clock">
         <div class="mark mark-h mark-12"></div>
         <div class="mark mark-h mark-1"></div>
@@ -184,6 +207,7 @@
     <div id="root"></div>
 
     <script>
+      /* ── Real-time clock hands ── */
       function updateClock() {
         var now = new Date();
         var h = now.getHours() % 12;
@@ -191,38 +215,36 @@
         var s = now.getSeconds();
         var ms = now.getMilliseconds();
 
-        var secondDeg = (s + ms / 1000) * 6;
-        var minuteDeg = (m + s / 60) * 6;
-        var hourDeg = (h + m / 60) * 30;
-
         var sh = document.getElementById('secondHand');
         var mh = document.getElementById('minuteHand');
         var hh = document.getElementById('hourHand');
-        if (sh) sh.style.transform = 'rotate(' + secondDeg + 'deg)';
-        if (mh) mh.style.transform = 'rotate(' + minuteDeg + 'deg)';
-        if (hh) hh.style.transform = 'rotate(' + hourDeg + 'deg)';
+        if (sh) sh.style.transform = 'rotate(' + ((s + ms / 1000) * 6) + 'deg)';
+        if (mh) mh.style.transform = 'rotate(' + ((m + s / 60) * 6) + 'deg)';
+        if (hh) hh.style.transform = 'rotate(' + ((h + m / 60) * 30) + 'deg)';
 
         requestAnimationFrame(updateClock);
       }
       updateClock();
-    </script>
-    <script>
-      // Fade out splash once React mounts into #root
-      var splash = document.getElementById('splash');
-      var rootObs = new MutationObserver(function() {
-        if (document.getElementById('root').children.length > 0) {
-          rootObs.disconnect();
+
+      /* ── Fade-out splash when React mounts into #root ── */
+      var splashObs = new MutationObserver(function() {
+        var root = document.getElementById('root');
+        if (root && root.children.length > 0) {
+          splashObs.disconnect();
+          /* Wait a beat for LoadingScreen's own mount animation, then fade */
           setTimeout(function() {
-            var s = document.getElementById('splash');
-            if (s) s.classList.add('fade-out');
-            setTimeout(function() {
-              var el = document.getElementById('splash');
-              if (el) el.remove();
-            }, 950);
-          }, 100);
+            var sp = document.getElementById('splash');
+            if (sp) {
+              sp.classList.add('fade-out');
+              setTimeout(function() {
+                var el = document.getElementById('splash');
+                if (el) el.remove();
+              }, 1250);
+            }
+          }, 400);
         }
       });
-      rootObs.observe(document.getElementById('root'), { childList: true });
+      splashObs.observe(document.getElementById('root'), { childList: true });
     </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
