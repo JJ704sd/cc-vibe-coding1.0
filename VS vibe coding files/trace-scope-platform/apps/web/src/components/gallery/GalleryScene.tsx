@@ -146,10 +146,11 @@ export function GalleryScene({
     const w = container.clientWidth;
     const h = container.clientHeight;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(w, h);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.setClearColor(0x87CEEB, 1);
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
@@ -297,7 +298,7 @@ export function GalleryScene({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sync night mode to lighting
+  // Sync night mode to lighting + renderer clear color
   useEffect(() => {
     if (!sceneRef.current) return;
     sceneRef.current.children.forEach((child) => {
@@ -312,6 +313,9 @@ export function GalleryScene({
         }
       }
     });
+    if (rendererRef.current) {
+      rendererRef.current.setClearColor(nightMode ? 0x1a1f35 : 0x87CEEB, 1);
+    }
   }, [nightMode]);
 
   // Create/update project cards
