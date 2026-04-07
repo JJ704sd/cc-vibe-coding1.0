@@ -278,10 +278,10 @@ export function GalleryScene({
     scene.add(pivot);
     artworkPivotRef.current = pivot;
 
-    // Sky dome — disabled for debugging blue circle issue
-    // const { mesh: skyMesh, uniforms: skyUniforms } = createSkyBackground();
-    // scene.add(skyMesh);
-    // skyUniformsRef.current = skyUniforms;
+    // Sky dome
+    const { mesh: skyMesh, uniforms: skyUniforms } = createSkyBackground();
+    scene.add(skyMesh);
+    skyUniformsRef.current = skyUniforms;
 
     // Frustum
     const frustum = new THREE.Frustum();
@@ -462,12 +462,12 @@ export function GalleryScene({
         });
       } else {
         imgMat = new THREE.MeshStandardMaterial({
-          color: new THREE.Color('#334466'),
+          color: new THREE.Color('#ffffff'),
           roughness: 0.35,
           metalness: 0.03,
           side: THREE.FrontSide,
           transparent: true,
-          opacity: 0.72,
+          opacity: 0.15,
         });
       }
       const imgMesh = new THREE.Mesh(sharedGeom, imgMat);
