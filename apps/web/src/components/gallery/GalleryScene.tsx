@@ -278,10 +278,10 @@ export function GalleryScene({
     scene.add(pivot);
     artworkPivotRef.current = pivot;
 
-    // Sky dome
-    const { mesh: skyMesh, uniforms: skyUniforms } = createSkyBackground();
-    scene.add(skyMesh);
-    skyUniformsRef.current = skyUniforms;
+    // Sky dome — disabled for debugging blue circle issue
+    // const { mesh: skyMesh, uniforms: skyUniforms } = createSkyBackground();
+    // scene.add(skyMesh);
+    // skyUniformsRef.current = skyUniforms;
 
     // Frustum
     const frustum = new THREE.Frustum();
