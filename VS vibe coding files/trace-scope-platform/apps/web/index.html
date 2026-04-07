@@ -9,32 +9,21 @@
     <title>Trace Scope Platform</title>
     <style>
       html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; }
-      #root {
-        width: 100vw;
-        height: 100vh;
-        overflow: hidden;
+      body { background: linear-gradient(to bottom, #87CEEB 0%, #FFD9DA 55%, #f85a4e 100%); }
+
+      /* ── Pre-load splash (outside #root, persists during React init) ── */
+      #splash {
         position: fixed;
-        top: 0; left: 0;
+        inset: 0;
+        z-index: 9999;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-      }
-      .sky-bg {
-        position: fixed;
-        inset: 0;
-        z-index: 0;
-        background: linear-gradient(to bottom, #87CEEB 0%, #FFD9DA 55%, #f85a4e 100%);
-        transition: opacity 1.2s ease;
-      }
-      .loader-wrap {
-        position: relative;
-        z-index: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
         gap: 28px;
+        transition: opacity 0.9s ease;
       }
+      #splash.fade-out { opacity: 0; pointer-events: none; }
 
       /* Clock face */
       .clock {
@@ -55,8 +44,6 @@
         position: relative;
         animation: clockFadeIn 0.8s ease both;
       }
-
-      /* Minute track ring */
       .clock::before {
         content: '';
         position: absolute;
@@ -65,18 +52,18 @@
         border: 1px solid rgba(160,180,210,0.3);
       }
 
-      /* Hour markers — 12 and 3 are heavier */
+      /* Hour markers */
       .mark {
         position: absolute;
         background: rgba(120,100,140,0.25);
         border-radius: 1px;
       }
       .mark-h { width: 1.5px; height: 5px; top: 7px; left: 50%; transform-origin: 50% 39px; }
-      .mark-v { width: 5px; height: 1.5px; top: 50%; right: 7px; transform-origin: calc(39px - 2px), 50%; }
+      .mark-v { width: 5px; height: 1.5px; top: 50%; transform-origin: 2px 50%; }
       .mark-12 { transform: translateX(-50%) rotate(0deg); background: rgba(120,100,140,0.5); }
       .mark-1  { transform: translateX(-50%) rotate(30deg); }
       .mark-2  { transform: translateX(-50%) rotate(60deg); }
-      .mark-3  { transform: translateY(-50%) rotate(0deg) translateX(2px); right: 7px; top: 50%; width: 5px; height: 1.5px; background: rgba(120,100,140,0.5); }
+      .mark-3  { transform: translateY(-50%) rotate(0deg) translateX(2px); right: 7px; left: auto; width: 5px; height: 1.5px; background: rgba(120,100,140,0.5); }
       .mark-4  { transform: translateX(50%) rotate(30deg) translateX(-2px); top: 50%; background: rgba(120,100,140,0.25); }
       .mark-5  { transform: translateX(50%) rotate(60deg) translateX(-2px); top: 50%; background: rgba(120,100,140,0.25); }
       .mark-6  { transform: translateY(-50%) rotate(0deg); bottom: 7px; top: auto; width: 1.5px; height: 5px; background: rgba(120,100,140,0.5); }
@@ -118,7 +105,6 @@
         border-radius: 1px;
         z-index: 5;
       }
-      /* Center cap */
       .center-cap {
         position: absolute;
         width: 5px;
@@ -132,7 +118,7 @@
         z-index: 6;
       }
 
-      /* Brand text below clock */
+      /* Brand text + progress bar */
       .loader-text {
         font-family: 'Cormorant Garamond', 'Georgia', serif;
         font-size: 13px;
@@ -143,8 +129,6 @@
         font-style: italic;
         animation: clockFadeIn 0.8s 0.25s ease both;
       }
-
-      /* Sweep progress bar */
       .loader-bar {
         width: 120px;
         height: 2px;
@@ -173,53 +157,72 @@
     </style>
   </head>
   <body>
-    <div id="root">
-      <div class="sky-bg"></div>
-      <div class="loader-wrap">
-        <div class="clock">
-          <div class="mark mark-h mark-12"></div>
-          <div class="mark mark-h mark-1"></div>
-          <div class="mark mark-h mark-2"></div>
-          <div class="mark mark-v mark-3"></div>
-          <div class="mark mark-h mark-4"></div>
-          <div class="mark mark-h mark-5"></div>
-          <div class="mark mark-h mark-6"></div>
-          <div class="mark mark-h mark-7"></div>
-          <div class="mark mark-h mark-8"></div>
-          <div class="mark mark-v mark-9"></div>
-          <div class="mark mark-h mark-10"></div>
-          <div class="mark mark-h mark-11"></div>
-          <div class="hand hour-hand" id="hourHand"></div>
-          <div class="hand minute-hand" id="minuteHand"></div>
-          <div class="hand second-hand" id="secondHand"></div>
-          <div class="center-cap"></div>
-        </div>
-        <div class="loader-text">Trace Scope</div>
-        <div class="loader-bar"></div>
+    <!-- Pre-load splash — lives outside #root so React can't erase it -->
+    <div id="splash">
+      <div class="clock">
+        <div class="mark mark-h mark-12"></div>
+        <div class="mark mark-h mark-1"></div>
+        <div class="mark mark-h mark-2"></div>
+        <div class="mark mark-v mark-3"></div>
+        <div class="mark mark-h mark-4"></div>
+        <div class="mark mark-h mark-5"></div>
+        <div class="mark mark-h mark-6"></div>
+        <div class="mark mark-h mark-7"></div>
+        <div class="mark mark-h mark-8"></div>
+        <div class="mark mark-v mark-9"></div>
+        <div class="mark mark-h mark-10"></div>
+        <div class="mark mark-h mark-11"></div>
+        <div class="hand hour-hand" id="hourHand"></div>
+        <div class="hand minute-hand" id="minuteHand"></div>
+        <div class="hand second-hand" id="secondHand"></div>
+        <div class="center-cap"></div>
       </div>
+      <div class="loader-text">Trace Scope</div>
+      <div class="loader-bar"></div>
     </div>
+
+    <div id="root"></div>
+
     <script>
       function updateClock() {
-        const now = new Date();
-        const h = now.getHours() % 12;
-        const m = now.getMinutes();
-        const s = now.getSeconds();
-        const ms = now.getMilliseconds();
+        var now = new Date();
+        var h = now.getHours() % 12;
+        var m = now.getMinutes();
+        var s = now.getSeconds();
+        var ms = now.getMilliseconds();
 
-        const secondDeg = (s + ms / 1000) * 6;
-        const minuteDeg = (m + s / 60) * 6;
-        const hourDeg = (h + m / 60) * 30;
+        var secondDeg = (s + ms / 1000) * 6;
+        var minuteDeg = (m + s / 60) * 6;
+        var hourDeg = (h + m / 60) * 30;
 
-        const sh = document.getElementById('secondHand');
-        const mh = document.getElementById('minuteHand');
-        const hh = document.getElementById('hourHand');
-        if (sh) sh.style.transform = `rotate(${secondDeg}deg)`;
-        if (mh) mh.style.transform = `rotate(${minuteDeg}deg)`;
-        if (hh) hh.style.transform = `rotate(${hourDeg}deg)`;
+        var sh = document.getElementById('secondHand');
+        var mh = document.getElementById('minuteHand');
+        var hh = document.getElementById('hourHand');
+        if (sh) sh.style.transform = 'rotate(' + secondDeg + 'deg)';
+        if (mh) mh.style.transform = 'rotate(' + minuteDeg + 'deg)';
+        if (hh) hh.style.transform = 'rotate(' + hourDeg + 'deg)';
 
         requestAnimationFrame(updateClock);
       }
       updateClock();
+    </script>
+    <script>
+      // Fade out splash once React mounts into #root
+      var splash = document.getElementById('splash');
+      var rootObs = new MutationObserver(function() {
+        if (document.getElementById('root').children.length > 0) {
+          rootObs.disconnect();
+          setTimeout(function() {
+            var s = document.getElementById('splash');
+            if (s) s.classList.add('fade-out');
+            setTimeout(function() {
+              var el = document.getElementById('splash');
+              if (el) el.remove();
+            }, 950);
+          }, 100);
+        }
+      });
+      rootObs.observe(document.getElementById('root'), { childList: true });
     </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
