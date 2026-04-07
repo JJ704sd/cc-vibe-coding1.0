@@ -81,9 +81,7 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
           left: 0,
           width: '100%',
           height: '100%',
-          background: isNight
-            ? 'linear-gradient(to bottom, #a3e3f9, #22295b)'
-            : 'linear-gradient(to bottom, #ffd9da, #f85a4e)',
+          background: '#ffffff',
           opacity: 0,
           pointerEvents: 'none',
           zIndex: 10,
