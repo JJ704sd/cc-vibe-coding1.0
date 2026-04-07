@@ -46,7 +46,7 @@ export function MapPage() {
           borderRadius: '16px',
           backgroundColor: nightMode ? '#7BA7FF' : '#5B8DEE',
           color: '#fff',
-          transition: 'all 0.25s ease',
+          transition: 'all 2s ease',
         }}>
           返回 3D 画廊
         </Link>
