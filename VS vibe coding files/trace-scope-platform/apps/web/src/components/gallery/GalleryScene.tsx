@@ -150,7 +150,7 @@ export function GalleryScene({
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(w, h);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.setClearColor(0x87CEEB, 1);
+    renderer.setClearColor(0x000000, 0);
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
@@ -411,9 +411,6 @@ export function GalleryScene({
         }
       }
     });
-    if (rendererRef.current) {
-      rendererRef.current.setClearColor(nightMode ? 0x1a1f35 : 0x87CEEB, 1);
-    }
   }, [nightMode]);
 
   // Create/update project cards
@@ -579,7 +576,7 @@ export function GalleryScene({
           pointerEvents: 'none',
           zIndex: 5,
           opacity: 1,
-          animation: 'clockShrink 3.2s cubic-bezier(0.4, 0, 0.2, 1) forwards',
+          animation: 'clockShrink 3s cubic-bezier(0.4, 0, 0.2, 1) forwards',
         }}
       />
       <style>{`
