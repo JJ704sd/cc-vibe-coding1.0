@@ -323,7 +323,16 @@ export function GalleryScene({
         camera.position.y = zoom * Math.cos(phi);
         camera.position.z = zoom * Math.sin(phi) * Math.sin(theta);
         camera.lookAt(0, 0, 0);
-        if (t >= 1.0) introActive = false;
+        if (t >= 1.0) {
+          introActive = false;
+          // Remove clock wrapper after intro animation finishes
+          const cw = document.getElementById('clock-wrapper');
+          if (cw) {
+            cw.style.transition = 'opacity 0.5s ease';
+            cw.style.opacity = '0';
+            setTimeout(() => cw.remove(), 520);
+          }
+        }
       } else {
         controls.update();
         // Slow global rotation of pivot
