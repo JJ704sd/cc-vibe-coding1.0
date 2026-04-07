@@ -87,6 +87,208 @@ body {
   transition: background 1s ease, color 0.5s ease;
 }
 
+.gallery-loading-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    linear-gradient(180deg, rgba(168, 214, 235, 0.72) 0%, rgba(244, 222, 221, 0.78) 56%, rgba(229, 164, 145, 0.74) 100%);
+  backdrop-filter: blur(14px) saturate(1.02);
+  opacity: 1;
+  transition: opacity 0.5s ease;
+}
+
+.gallery-loading-screen--night {
+  background:
+    linear-gradient(180deg, rgba(28, 38, 70, 0.82) 0%, rgba(38, 49, 91, 0.8) 55%, rgba(70, 72, 112, 0.76) 100%);
+}
+
+.gallery-loading-screen--fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.gallery-loading-screen__veil {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.24), transparent 34%),
+    radial-gradient(circle at 50% 120%, rgba(113, 84, 78, 0.14), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 56%);
+}
+
+.gallery-loading-screen--night .gallery-loading-screen__veil {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(182, 205, 255, 0.16), transparent 34%),
+    radial-gradient(circle at 50% 120%, rgba(12, 16, 30, 0.24), transparent 44%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 56%);
+}
+
+.gallery-loading-screen__content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  animation: gallery-loader-enter 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-origin: center center;
+}
+
+.gallery-loading-screen__clock {
+  position: relative;
+  width: 108px;
+  height: 108px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 38%, rgba(255,255,255,0.96) 0%, rgba(244,248,252,0.88) 40%, rgba(217,227,239,0.74) 100%);
+  box-shadow:
+    0 0 0 1.5px rgba(255,255,255,0.6),
+    0 0 0 3px rgba(180,200,230,0.18),
+    0 12px 34px rgba(123,88,72,0.09),
+    0 2px 8px rgba(100,60,40,0.05),
+    inset 0 1.5px 4px rgba(255,255,255,0.9),
+    inset 0 -1.5px 3px rgba(150,180,210,0.22);
+}
+
+.gallery-loading-screen--night .gallery-loading-screen__clock {
+  background: radial-gradient(circle at 38% 38%, rgba(245,248,255,0.96) 0%, rgba(215,224,240,0.88) 42%, rgba(142,154,188,0.78) 100%);
+  box-shadow:
+    0 0 0 1.5px rgba(255,255,255,0.26),
+    0 0 0 3px rgba(123,146,202,0.16),
+    0 12px 36px rgba(10,16,28,0.28),
+    inset 0 1.5px 4px rgba(255,255,255,0.34),
+    inset 0 -1.5px 3px rgba(68,88,132,0.24);
+}
+
+.gallery-loading-screen__clock::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  border: 1px solid rgba(160,180,210,0.28);
+}
+
+.gallery-loading-screen__mark {
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  width: 2px;
+  height: 8px;
+  margin-left: -1px;
+  border-radius: 999px;
+  background: rgba(120,100,140,0.2);
+  transform-origin: 50% 48px;
+}
+
+.gallery-loading-screen__mark--12 { transform: rotate(0deg); background: rgba(120,100,140,0.42); }
+.gallery-loading-screen__mark--1 { transform: rotate(30deg); }
+.gallery-loading-screen__mark--2 { transform: rotate(60deg); }
+.gallery-loading-screen__mark--3 { transform: rotate(90deg); background: rgba(120,100,140,0.42); }
+.gallery-loading-screen__mark--4 { transform: rotate(120deg); }
+.gallery-loading-screen__mark--5 { transform: rotate(150deg); }
+.gallery-loading-screen__mark--6 { transform: rotate(180deg); background: rgba(120,100,140,0.42); }
+.gallery-loading-screen__mark--7 { transform: rotate(210deg); }
+.gallery-loading-screen__mark--8 { transform: rotate(240deg); }
+.gallery-loading-screen__mark--9 { transform: rotate(270deg); background: rgba(120,100,140,0.42); }
+.gallery-loading-screen__mark--10 { transform: rotate(300deg); }
+.gallery-loading-screen__mark--11 { transform: rotate(330deg); }
+
+.gallery-loading-screen__hand {
+  position: absolute;
+  left: 50%;
+  bottom: 50%;
+  transform-origin: 50% 100%;
+  border-radius: 999px;
+}
+
+.gallery-loading-screen__hand--hour {
+  width: 3px;
+  height: 27px;
+  margin-left: -1.5px;
+  background: linear-gradient(180deg, rgba(140,110,160,0.16), rgba(100,80,120,0.72));
+  animation: gallery-hour-spin 11s linear infinite;
+}
+
+.gallery-loading-screen__hand--minute {
+  width: 2px;
+  height: 37px;
+  margin-left: -1px;
+  background: linear-gradient(180deg, rgba(140,110,160,0.1), rgba(100,80,120,0.68));
+  animation: gallery-minute-spin 5.4s linear infinite;
+}
+
+.gallery-loading-screen__hand--second {
+  width: 1px;
+  height: 42px;
+  margin-left: -0.5px;
+  background: linear-gradient(180deg, rgba(248,90,78,0.16), rgba(248,90,78,0.92));
+  animation: gallery-second-spin 1.7s linear infinite;
+}
+
+.gallery-loading-screen__cap {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, #f85a4e 0%, rgba(248,90,78,0.58) 100%);
+  box-shadow: 0 0 6px rgba(248,90,78,0.28);
+}
+
+.gallery-loading-screen__label {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.95rem;
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(60,40,50,0.56);
+}
+
+.gallery-loading-screen--night .gallery-loading-screen__label {
+  color: rgba(214, 220, 241, 0.72);
+}
+
+@keyframes gallery-loader-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.965) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes gallery-hour-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes gallery-minute-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes gallery-second-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gallery-loading-screen__content,
+  .gallery-loading-screen__hand--hour,
+  .gallery-loading-screen__hand--minute,
+  .gallery-loading-screen__hand--second {
+    animation: none;
+  }
+}
+
 a {
   color: var(--accent);
   text-decoration: none;
