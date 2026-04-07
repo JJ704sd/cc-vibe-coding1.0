@@ -78,7 +78,7 @@ export function PublicLayout() {
         {/* Nav */}
         <nav style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {[
-            { to: '/gallery', label: '画廊' },
+            { to: '/', label: '画廊' },
             { to: '/map', label: '地图' },
             { to: '/projects', label: '项目' },
             { to: '/admin', label: '后台' },
