@@ -8,30 +8,65 @@ export function createPublicDataReader(store: AdminDataStore, snapshot?: AdminDa
     return snapshot ?? store.getState();
   }
 
-  function getPublishedProjects(): Project[] {
-    return getState().projects.filter((project) => project.status === 'published');
+  function getPublishedProjectsFromState(state: AdminDataState): Project[] {
+    return state.projects.filter((project) => project.status === 'published');
   }
 
-  function getPublishedProjectIds() {
-    return new Set(getPublishedProjects().map((project) => project.id));
+  function getPublishedProjectIdsFromState(state: AdminDataState) {
+    return new Set(getPublishedProjectsFromState(state).map((project) => project.id));
   }
 
   return {
     getState,
-    getPublishedProjects,
+    getPublishedProjects(): Project[] {
+      return getPublishedProjectsFromState(getState());
+    },
     getPublishedLocations(): Location[] {
-      const publishedProjectIds = getPublishedProjectIds();
-      return getState().locations.filter((location) => publishedProjectIds.has(location.projectId));
+      const state = getState();
+      const publishedProjectIds = getPublishedProjectIdsFromState(state);
+      return state.locations.filter((location) => publishedProjectIds.has(location.projectId));
     },
     getPublishedRoutes(): RouteEntity[] {
-      const publishedProjectIds = getPublishedProjectIds();
-      return getState().routes.filter((route) => publishedProjectIds.has(route.projectId));
+      const state = getState();
+      const publishedProjectIds = getPublishedProjectIdsFromState(state);
+      return state.routes.filter((route) => publishedProjectIds.has(route.projectId));
+    },
+    getPublishedMapRelationshipSource() {
+      const state = getState();
+      const publishedProjectIds = getPublishedProjectIdsFromState(state);
+      const mediaSets = state.mediaSets.filter((mediaSet) => publishedProjectIds.has(mediaSet.projectId));
+      const mediaSetIds = new Set(mediaSets.map((mediaSet) => mediaSet.id));
+
+      return {
+        projects: getPublishedProjectsFromState(state),
+        locations: state.locations.filter((location) => publishedProjectIds.has(location.projectId)),
+        mediaSets,
+        mediaImages: state.mediaImages.filter((image) => mediaSetIds.has(image.mediaSetId)),
+        routes: state.routes.filter((route) => publishedProjectIds.has(route.projectId)),
+      };
     },
     getMediaSetById(mediaSetId: string): MediaSet | null {
-      return getState().mediaSets.find((mediaSet) => mediaSet.id === mediaSetId) ?? null;
+      const state = getState();
+      const publishedProjectIds = getPublishedProjectIdsFromState(state);
+      return (
+        state.mediaSets.find(
+          (mediaSet) => mediaSet.id === mediaSetId && publishedProjectIds.has(mediaSet.projectId),
+        ) ?? null
+      );
     },
     getMediaSetImages(mediaSetId: string): MediaImage[] {
-      return getState().mediaImages.filter((image) => image.mediaSetId === mediaSetId);
+      const state = getState();
+      const publishedProjectIds = getPublishedProjectIdsFromState(state);
+      const mediaSet = state.mediaSets.find(
+        (currentMediaSet) =>
+          currentMediaSet.id === mediaSetId && publishedProjectIds.has(currentMediaSet.projectId),
+      );
+
+      if (!mediaSet) {
+        return [];
+      }
+
+      return state.mediaImages.filter((image) => image.mediaSetId === mediaSet.id);
     },
   };
 }

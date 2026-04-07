@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { createAdminDataStore, createMemoryStorageAdapter } from '@/services/storage/adminDataStore';
 import { createPublicDataReader } from '@/services/storage/publicDataReader';
 
@@ -154,30 +154,21 @@ const seed = {
   ],
 };
 
-describe('createPublicDataReader', () => {
-  it('reads from the same store and filters projects to published items', () => {
+describe('createPublicDataReader map relationship source', () => {
+  it('returns published map relationship source data in one call', () => {
     const store = createAdminDataStore({
       adapter: createMemoryStorageAdapter(),
       seed,
     });
     const reader = createPublicDataReader(store);
 
-    expect(reader.getPublishedProjects()).toHaveLength(1);
-    expect(reader.getPublishedProjects()[0].id).toBe('published-project');
-  });
+    const source = reader.getPublishedMapRelationshipSource();
 
-  it('returns project-linked public entities for map and media pages', () => {
-    const store = createAdminDataStore({
-      adapter: createMemoryStorageAdapter(),
-      seed,
-    });
-    const reader = createPublicDataReader(store);
-
-    expect(reader.getPublishedLocations()).toHaveLength(1);
-    expect(reader.getPublishedRoutes()).toHaveLength(1);
-    expect(reader.getMediaSetById('spin-set')?.title).toBe('旋转组');
-    expect(reader.getMediaSetImages('gallery-set')).toHaveLength(1);
-    expect(reader.getMediaSetById('draft-set')).toBeNull();
-    expect(reader.getMediaSetImages('draft-set')).toEqual([]);
+    expect(source.projects).toHaveLength(1);
+    expect(source.projects[0].id).toBe('published-project');
+    expect(source.locations).toHaveLength(1);
+    expect(source.mediaSets.map((mediaSet) => mediaSet.id)).toEqual(['spin-set', 'gallery-set']);
+    expect(source.mediaImages.map((image) => image.id)).toEqual(['spin-image-1', 'gallery-image-1']);
+    expect(source.routes).toHaveLength(1);
   });
 });
