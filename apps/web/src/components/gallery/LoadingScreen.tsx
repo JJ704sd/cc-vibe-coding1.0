@@ -1,103 +1,94 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 interface LoadingScreenProps {
   onComplete: () => void;
 }
 
 export function LoadingScreen({ onComplete }: LoadingScreenProps) {
-  const [fading, setFading] = useState(false);
+  const flashRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setFading(true);
-      setTimeout(onComplete, 800);
-    }, 2200);
-    return () => clearTimeout(timer);
+    const flash = flashRef.current;
+    if (!flash) return;
+
+    // Phase 1: flash to white (0.4s)
+    flash.style.transition = 'opacity 0.4s ease-in';
+    flash.style.opacity = '1';
+
+    const timer1 = setTimeout(() => {
+      // Phase 2: hold white briefly, then fade out (0.6s)
+      const parent = flash.parentElement;
+      if (parent) {
+        parent.style.transition = 'opacity 0.6s ease-out';
+        parent.style.opacity = '0';
+      }
+      setTimeout(() => {
+        onComplete();
+      }, 600);
+    }, 400);
+
+    return () => clearTimeout(timer1);
   }, [onComplete]);
+
+  // Compute time-of-day background color
+  const h = new Date().getHours() + new Date().getMinutes() / 60;
+  const isNight = h < 5.5 || h > 18.5;
 
   return (
     <div
       style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 999,
-        background: 'linear-gradient(135deg, #E85A4F 0%, #E8A87C 50%, #F5C6A0 100%)',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        background: isNight
+          ? 'linear-gradient(to bottom, #a3e3f9, #22295b)'
+          : 'linear-gradient(to bottom, #ffd9da, #f85a4e)',
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
         justifyContent: 'center',
-        gap: '32px',
-        opacity: fading ? 0 : 1,
-        transition: 'opacity 0.8s ease',
-        pointerEvents: fading ? 'none' : 'all',
+        alignItems: 'center',
+        zIndex: 100,
+        overflow: 'hidden',
       }}
     >
-      {/* Spinning dice icon */}
-      <div
+      {/* Spinning dice */}
+      <img
+        src="/assets/shaizi.png"
+        alt="loading"
         style={{
-          width: '80px',
-          height: '80px',
-          background: 'rgba(255,255,255,0.25)',
-          borderRadius: '20px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '2.5rem',
-          color: 'white',
-          animation: 'diceSpin 1.2s linear infinite',
-          backdropFilter: 'blur(8px)',
-          border: '1px solid rgba(255,255,255,0.3)',
+          width: '111px',
+          height: '111px',
+          objectFit: 'contain',
+          filter: 'drop-shadow(0 0 18px rgba(255, 255, 255, 0.4)) drop-shadow(0 0 40px rgba(255, 255, 255, 0.15))',
+          animation: 'diceSpin 4s linear infinite',
         }}
-      >
-        ◈
-      </div>
-
-      {/* Brand name */}
-      <div
-        style={{
-          fontFamily: "'Playfair Display', serif",
-          fontSize: '1.8rem',
-          fontWeight: 700,
-          color: 'white',
-          letterSpacing: '0.08em',
-          textShadow: '0 2px 16px rgba(0,0,0,0.15)',
-        }}
-      >
-        Trace Scope
-      </div>
-
-      {/* Loading bar */}
-      <div
-        style={{
-          width: '200px',
-          height: '3px',
-          background: 'rgba(255,255,255,0.3)',
-          borderRadius: '2px',
-          overflow: 'hidden',
-        }}
-      >
-        <div
-          style={{
-            height: '100%',
-            background: 'white',
-            borderRadius: '2px',
-            animation: 'loadingBar 2s ease-out forwards',
-          }}
-        />
-      </div>
-
+      />
       <style>{`
         @keyframes diceSpin {
-          0% { transform: rotate(0deg) scale(1); }
-          50% { transform: rotate(180deg) scale(1.1); }
-          100% { transform: rotate(360deg) scale(1); }
-        }
-        @keyframes loadingBar {
-          0% { width: 0%; }
-          60% { width: 80%; }
-          100% { width: 100%; }
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
         }
       `}</style>
+
+      {/* Flash overlay */}
+      <div
+        ref={flashRef}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          background: isNight
+            ? 'linear-gradient(to bottom, #a3e3f9, #22295b)'
+            : 'linear-gradient(to bottom, #ffd9da, #f85a4e)',
+          opacity: 0,
+          pointerEvents: 'none',
+          zIndex: 10,
+        }}
+      />
     </div>
   );
 }
