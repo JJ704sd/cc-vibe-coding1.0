@@ -212,6 +212,7 @@ export function GalleryHome() {
 
             {/* Nav links */}
             {[
+              { to: '/map', label: '地图' },
               { to: '/projects', label: '项目' },
               { to: '/admin', label: '后台' },
             ].map((item) => (
