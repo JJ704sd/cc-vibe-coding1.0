@@ -54,21 +54,21 @@ export function LoadingScreen({ onComplete }: LoadingScreenProps) {
       }}
     >
       {/* Spinning dice */}
-      <img
-        src="/assets/shaizi.png"
-        alt="loading"
+      <div
         style={{
           width: '111px',
           height: '111px',
-          objectFit: 'contain',
-          filter: 'drop-shadow(0 0 18px rgba(255, 255, 255, 0.4)) drop-shadow(0 0 40px rgba(255, 255, 255, 0.15))',
-          animation: 'diceSpin 4s linear infinite',
+          borderRadius: '24%',
+          background: 'linear-gradient(135deg, rgba(255,255,255,0.9), rgba(200,220,255,0.7))',
+          boxShadow: '0 0 30px rgba(255,255,255,0.5), 0 0 60px rgba(255,255,255,0.2), inset 0 0 20px rgba(255,255,255,0.3)',
+          animation: 'diceSpin 2.5s ease-in-out infinite',
         }}
       />
       <style>{`
         @keyframes diceSpin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
+          0% { transform: rotate(0deg) scale(1); }
+          50% { transform: rotate(180deg) scale(0.92); }
+          100% { transform: rotate(360deg) scale(1); }
         }
       `}</style>
 
