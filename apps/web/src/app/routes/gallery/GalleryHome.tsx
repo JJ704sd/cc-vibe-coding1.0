@@ -10,8 +10,8 @@ export function GalleryHome() {
   const [showLoader, setShowLoader] = useState(true);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [nightMode, setNightMode] = useState(() => {
-    const h = new Date().getHours();
-    return h < 6 || h >= 19;
+    const h = new Date().getHours() + new Date().getMinutes() / 60;
+    return h < 5.5 || h > 18.5;
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
@@ -20,7 +20,6 @@ export function GalleryHome() {
   const state = reader.getState();
   const publishedProjects = reader.getPublishedProjects();
 
-  // Filter projects by search query
   const filteredProjects = publishedProjects.filter((project) => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
@@ -34,8 +33,8 @@ export function GalleryHome() {
   // Night mode auto-refresh every minute
   useEffect(() => {
     const iv = setInterval(() => {
-      const h = new Date().getHours();
-      setNightMode(h < 6 || h >= 19);
+      const h = new Date().getHours() + new Date().getMinutes() / 60;
+      setNightMode(h < 5.5 || h > 18.5);
     }, 60000);
     return () => clearInterval(iv);
   }, []);
@@ -54,7 +53,8 @@ export function GalleryHome() {
         position: 'fixed',
         inset: 0,
         overflow: 'hidden',
-        background: nightMode ? '#0f1629' : '#87CEEB',
+        background: nightMode ? '#22295b' : '#87CEEB',
+        transition: 'background 2s ease',
       }}
     >
       {showLoader && <LoadingScreen onComplete={() => setShowLoader(false)} />}
@@ -64,7 +64,6 @@ export function GalleryHome() {
         <GalleryScene
           projects={filteredProjects}
           locations={state.locations}
-          mediaSets={state.mediaSets}
           nightMode={nightMode}
           onProjectSelect={handleProjectSelect}
         />
@@ -73,50 +72,65 @@ export function GalleryHome() {
       {/* Floating UI Overlay */}
       {!showLoader && (
         <>
-          {/* Top-left: Brand */}
+          {/* Top-left: Brand — Cormorant Garamond */}
           <div
             style={{
               position: 'fixed',
-              top: '24px',
-              left: '28px',
-              zIndex: 50,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '4px',
+              top: '40px',
+              left: '40px',
+              zIndex: 10,
+              pointerEvents: 'none',
             }}
           >
             <div
               style={{
-                fontFamily: "'Playfair Display', serif",
-                fontSize: '1.6rem',
-                fontWeight: 700,
-                color: nightMode ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.85)',
-                letterSpacing: '0.04em',
-                textShadow: nightMode
-                  ? '0 2px 16px rgba(0,0,0,0.5)'
-                  : '0 2px 16px rgba(0,0,0,0.15)',
+                fontFamily: "'Cormorant Garamond', serif",
+                fontSize: '22px',
+                fontWeight: 400,
+                color: nightMode ? 'rgba(200,200,220,0.6)' : 'rgba(60,60,80,0.6)',
+                letterSpacing: '0.15em',
+                textTransform: 'uppercase',
+                transition: 'color 2s ease',
               }}
             >
               Trace Scope
             </div>
-            <div
-              style={{
-                fontSize: '0.7rem',
-                color: nightMode ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.5)',
-                letterSpacing: '0.2em',
-                textTransform: 'uppercase',
-                fontWeight: 500,
-              }}
-            >
-              双核心空间叙事平台
-            </div>
           </div>
 
-          {/* Top-right: Nav */}
+          {/* Top-right: Parisienne site name */}
           <div
             style={{
               position: 'fixed',
               top: '24px',
+              right: '40px',
+              zIndex: 10,
+              fontFamily: "'Parisienne', cursive",
+              fontSize: '28px',
+              fontWeight: 400,
+              fontStyle: 'normal',
+              letterSpacing: '0.05em',
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.9) 20%, rgba(200,220,255,0.6) 40%, rgba(255,255,255,0.95) 55%, rgba(220,200,255,0.5) 70%, rgba(255,255,255,0.85) 100%)',
+              backgroundSize: '300% 300%',
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              animation: 'glassText 8s ease-in-out infinite',
+            }}
+          >
+            <style>{`
+              @keyframes glassText {
+                0%, 100% { background-position: 0% 50%; }
+                50% { background-position: 100% 50%; }
+              }
+            `}</style>
+            Trace Scope
+          </div>
+
+          {/* Top-right: Nav bar */}
+          <div
+            style={{
+              position: 'fixed',
+              top: '28px',
               right: '28px',
               zIndex: 50,
               display: 'flex',
@@ -142,12 +156,11 @@ export function GalleryHome() {
                 justifyContent: 'center',
                 transition: 'all 0.3s ease',
               }}
-              title="搜索项目"
             >
               ⌕
             </button>
 
-            {/* Search bar */}
+            {/* Search input */}
             {showSearch && (
               <input
                 type="text"
@@ -165,6 +178,7 @@ export function GalleryHome() {
                   fontSize: '0.85rem',
                   outline: 'none',
                   backdropFilter: 'blur(12px)',
+                  fontFamily: "'Work Sans', sans-serif",
                 }}
               />
             )}
@@ -205,24 +219,13 @@ export function GalleryHome() {
                   borderRadius: '14px',
                   fontSize: '0.8rem',
                   fontWeight: 500,
+                  fontFamily: "'Work Sans', sans-serif",
                   backdropFilter: 'blur(12px)',
-                  background: nightMode
-                    ? 'rgba(255,255,255,0.08)'
-                    : 'rgba(0,0,0,0.1)',
+                  background: nightMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)',
                   border: `1px solid ${nightMode ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.25)'}`,
-                  color: nightMode ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.85)',
+                  color: 'rgba(255,255,255,0.85)',
                   textDecoration: 'none',
                   transition: 'all 0.25s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = nightMode
-                    ? 'rgba(255,255,255,0.15)'
-                    : 'rgba(0,0,0,0.18)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = nightMode
-                    ? 'rgba(255,255,255,0.08)'
-                    : 'rgba(0,0,0,0.1)';
                 }}
               >
                 {item.label}
@@ -230,17 +233,19 @@ export function GalleryHome() {
             ))}
           </div>
 
-          {/* Bottom-right: Info */}
+          {/* Bottom-right: Project count */}
           <div
             style={{
               position: 'fixed',
-              bottom: '20px',
-              right: '28px',
-              zIndex: 50,
-              fontSize: '0.7rem',
-              color: nightMode ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.45)',
-              letterSpacing: '0.08em',
-              fontFamily: 'monospace',
+              bottom: '16px',
+              right: '20px',
+              zIndex: 10,
+              fontSize: '11px',
+              color: nightMode ? 'rgba(200,200,220,0.25)' : 'rgba(60,60,80,0.35)',
+              letterSpacing: '0.04em',
+              fontFamily: "'Work Sans', sans-serif",
+              transition: 'color 2s ease',
+              pointerEvents: 'none',
             }}
           >
             {searchQuery ? `${filteredProjects.length} / ${publishedProjects.length}` : publishedProjects.length} projects · drag to explore
@@ -250,15 +255,36 @@ export function GalleryHome() {
           <div
             style={{
               position: 'fixed',
-              bottom: '20px',
-              left: '28px',
-              zIndex: 50,
-              fontSize: '0.72rem',
-              color: nightMode ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.45)',
+              bottom: '16px',
+              left: '40px',
+              zIndex: 10,
+              fontSize: '11px',
+              color: nightMode ? 'rgba(200,200,220,0.35)' : 'rgba(60,60,80,0.4)',
               letterSpacing: '0.06em',
+              fontFamily: "'Work Sans', sans-serif",
+              transition: 'color 2s ease',
+              pointerEvents: 'none',
             }}
           >
             scroll to zoom · drag to rotate · click to view
+          </div>
+
+          {/* Copyright */}
+          <div
+            style={{
+              position: 'fixed',
+              bottom: '16px',
+              right: '120px',
+              zIndex: 10,
+              fontSize: '11px',
+              color: nightMode ? 'rgba(200,200,220,0.25)' : 'rgba(60,60,80,0.3)',
+              letterSpacing: '0.04em',
+              fontFamily: "'Work Sans', sans-serif",
+              transition: 'color 2s ease',
+              pointerEvents: 'none',
+            }}
+          >
+            © 2026 Trace Scope
           </div>
         </>
       )}
