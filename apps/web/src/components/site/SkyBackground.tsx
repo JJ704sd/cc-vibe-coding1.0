@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react';
+import { createElement, useMemo } from 'react';
 import * as THREE from 'three';
 
 interface SkyBackgroundProps {
@@ -7,8 +7,6 @@ interface SkyBackgroundProps {
 }
 
 export function SkyBackground({ nightFactor, time = 0 }: SkyBackgroundProps) {
-  const meshRef = useRef<THREE.Mesh>(null);
-
   const skyUniforms = useMemo(() => ({
     uSunElev: { value: 0.5 },
     uNightFactor: { value: nightFactor },
@@ -248,9 +246,15 @@ export function SkyBackground({ nightFactor, time = 0 }: SkyBackgroundProps) {
     depthWrite: false,
   }), [skyUniforms]);
 
-  return (
-    <mesh ref={meshRef} material={skyMaterial} renderOrder={-2}>
-      <sphereGeometry args={[8000, 32, 32]} />
-    </mesh>
-  );
+  // Use React Three Fiber pattern with primitive element
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mesh = useMemo(() => {
+    const sphere = new THREE.SphereGeometry(8000, 32, 32);
+    const m = new THREE.Mesh(sphere, skyMaterial);
+    m.renderOrder = -2;
+    return m;
+  }, [skyUniforms]);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return createElement('primitive' as any, { object: mesh });
 }
