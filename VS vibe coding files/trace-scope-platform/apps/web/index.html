@@ -33,21 +33,106 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 32px;
+        gap: 28px;
       }
-      .loader-dice {
+
+      /* Clock face */
+      .clock {
         width: 96px;
         height: 96px;
-        border-radius: 22%;
-        background: linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(220,235,255,0.75) 100%);
+        border-radius: 50%;
+        background: radial-gradient(circle at 38% 38%,
+          rgba(255,255,255,0.96) 0%,
+          rgba(240,248,255,0.85) 40%,
+          rgba(210,225,245,0.7) 100%);
         box-shadow:
-          0 0 24px rgba(255,255,255,0.55),
-          0 0 60px rgba(255,255,255,0.22),
-          inset 0 2px 8px rgba(255,255,255,0.8),
-          inset 0 -2px 8px rgba(180,200,230,0.3);
-        animation: diceSpin 2.4s ease-in-out infinite;
-        filter: drop-shadow(0 4px 16px rgba(0,0,0,0.06));
+          0 0 0 1.5px rgba(255,255,255,0.6),
+          0 0 0 3px rgba(180,200,230,0.25),
+          0 8px 32px rgba(120,80,60,0.12),
+          0 2px 8px rgba(100,60,40,0.08),
+          inset 0 1.5px 4px rgba(255,255,255,0.9),
+          inset 0 -1.5px 4px rgba(150,180,210,0.3);
+        position: relative;
+        animation: clockFadeIn 0.8s ease both;
       }
+
+      /* Minute track ring */
+      .clock::before {
+        content: '';
+        position: absolute;
+        inset: 5px;
+        border-radius: 50%;
+        border: 1px solid rgba(160,180,210,0.3);
+      }
+
+      /* Hour markers — 12 and 3 are heavier */
+      .mark {
+        position: absolute;
+        background: rgba(120,100,140,0.25);
+        border-radius: 1px;
+      }
+      .mark-h { width: 1.5px; height: 5px; top: 7px; left: 50%; transform-origin: 50% 39px; }
+      .mark-v { width: 5px; height: 1.5px; top: 50%; right: 7px; transform-origin: calc(39px - 2px), 50%; }
+      .mark-12 { transform: translateX(-50%) rotate(0deg); background: rgba(120,100,140,0.5); }
+      .mark-1  { transform: translateX(-50%) rotate(30deg); }
+      .mark-2  { transform: translateX(-50%) rotate(60deg); }
+      .mark-3  { transform: translateY(-50%) rotate(0deg) translateX(2px); right: 7px; top: 50%; width: 5px; height: 1.5px; background: rgba(120,100,140,0.5); }
+      .mark-4  { transform: translateX(50%) rotate(30deg) translateX(-2px); top: 50%; background: rgba(120,100,140,0.25); }
+      .mark-5  { transform: translateX(50%) rotate(60deg) translateX(-2px); top: 50%; background: rgba(120,100,140,0.25); }
+      .mark-6  { transform: translateY(-50%) rotate(0deg); bottom: 7px; top: auto; width: 1.5px; height: 5px; background: rgba(120,100,140,0.5); }
+      .mark-7  { transform: translateX(-50%) rotate(-60deg); }
+      .mark-8  { transform: translateX(-50%) rotate(-30deg); }
+      .mark-9  { left: 7px; transform: translateY(-50%) rotate(0deg) translateX(-2px); width: 5px; height: 1.5px; background: rgba(120,100,140,0.5); }
+      .mark-10 { transform: translateX(-50%) rotate(120deg); }
+      .mark-11 { transform: translateX(-50%) rotate(150deg); }
+
+      /* Clock hands */
+      .hand {
+        position: absolute;
+        bottom: 50%;
+        left: 50%;
+        transform-origin: 50% 100%;
+        border-radius: 2px;
+      }
+      .hour-hand {
+        width: 2.5px;
+        height: 24px;
+        margin-left: -1.25px;
+        background: linear-gradient(to top, rgba(100,80,120,0.75), rgba(140,110,160,0.55));
+        border-radius: 2px;
+        z-index: 3;
+      }
+      .minute-hand {
+        width: 1.5px;
+        height: 33px;
+        margin-left: -0.75px;
+        background: linear-gradient(to top, rgba(100,80,120,0.65), rgba(140,110,160,0.45));
+        border-radius: 1.5px;
+        z-index: 4;
+      }
+      .second-hand {
+        width: 1px;
+        height: 37px;
+        margin-left: -0.5px;
+        background: linear-gradient(to top, rgba(248,90,78,0.8), rgba(248,90,78,0.3));
+        border-radius: 1px;
+        z-index: 5;
+      }
+      /* Center cap */
+      .center-cap {
+        position: absolute;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: radial-gradient(circle, #f85a4e 0%, rgba(248,90,78,0.6) 100%);
+        box-shadow: 0 0 5px rgba(248,90,78,0.4);
+        z-index: 6;
+      }
+
+      /* Brand text below clock */
       .loader-text {
         font-family: 'Cormorant Garamond', 'Georgia', serif;
         font-size: 13px;
@@ -56,14 +141,18 @@
         text-transform: uppercase;
         color: rgba(60,40,50,0.45);
         font-style: italic;
+        animation: clockFadeIn 0.8s 0.25s ease both;
       }
+
+      /* Sweep progress bar */
       .loader-bar {
         width: 120px;
         height: 2px;
         border-radius: 2px;
-        background: rgba(255,255,255,0.35);
+        background: rgba(255,255,255,0.3);
         overflow: hidden;
         position: relative;
+        animation: clockFadeIn 0.8s 0.45s ease both;
       }
       .loader-bar::after {
         content: '';
@@ -72,14 +161,13 @@
         background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
         animation: barSweep 1.8s ease-in-out infinite;
       }
-      @keyframes diceSpin {
-        0% { transform: rotate(0deg) scale(1); }
-        45% { transform: rotate(190deg) scale(0.91); }
-        55% { transform: rotate(200deg) scale(0.91); }
-        100% { transform: rotate(380deg) scale(1); }
+
+      @keyframes clockFadeIn {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
       }
       @keyframes barSweep {
-        0% { transform: translateX(-100%); }
+        0%   { transform: translateX(-100%); }
         100% { transform: translateX(200%); }
       }
     </style>
@@ -88,11 +176,51 @@
     <div id="root">
       <div class="sky-bg"></div>
       <div class="loader-wrap">
-        <div class="loader-dice"></div>
+        <div class="clock">
+          <div class="mark mark-h mark-12"></div>
+          <div class="mark mark-h mark-1"></div>
+          <div class="mark mark-h mark-2"></div>
+          <div class="mark mark-v mark-3"></div>
+          <div class="mark mark-h mark-4"></div>
+          <div class="mark mark-h mark-5"></div>
+          <div class="mark mark-h mark-6"></div>
+          <div class="mark mark-h mark-7"></div>
+          <div class="mark mark-h mark-8"></div>
+          <div class="mark mark-v mark-9"></div>
+          <div class="mark mark-h mark-10"></div>
+          <div class="mark mark-h mark-11"></div>
+          <div class="hand hour-hand" id="hourHand"></div>
+          <div class="hand minute-hand" id="minuteHand"></div>
+          <div class="hand second-hand" id="secondHand"></div>
+          <div class="center-cap"></div>
+        </div>
+        <div class="loader-text">Trace Scope</div>
         <div class="loader-bar"></div>
-        <div class="loader-text">Loading</div>
       </div>
     </div>
+    <script>
+      function updateClock() {
+        const now = new Date();
+        const h = now.getHours() % 12;
+        const m = now.getMinutes();
+        const s = now.getSeconds();
+        const ms = now.getMilliseconds();
+
+        const secondDeg = (s + ms / 1000) * 6;
+        const minuteDeg = (m + s / 60) * 6;
+        const hourDeg = (h + m / 60) * 30;
+
+        const sh = document.getElementById('secondHand');
+        const mh = document.getElementById('minuteHand');
+        const hh = document.getElementById('hourHand');
+        if (sh) sh.style.transform = `rotate(${secondDeg}deg)`;
+        if (mh) mh.style.transform = `rotate(${minuteDeg}deg)`;
+        if (hh) hh.style.transform = `rotate(${hourDeg}deg)`;
+
+        requestAnimationFrame(updateClock);
+      }
+      updateClock();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
