@@ -150,7 +150,7 @@ export function GalleryScene({
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(w, h);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.setClearColor(0x000000, 0);
+    renderer.setClearColor(0x385EC7, 1);
     container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
