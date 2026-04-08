@@ -12,6 +12,8 @@ export function AdminMediaPage() {
   const [errors, setErrors] = useState<Partial<Record<keyof ReturnType<typeof createMediaSetDraft>, string>>>({});
   const [imageCaption, setImageCaption] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [imageLatitude, setImageLatitude] = useState('');
+  const [imageLongitude, setImageLongitude] = useState('');
   const [imageErrors, setImageErrors] = useState<Partial<Record<'caption' | 'url', string>>>({});
   const [batchUrls, setBatchUrls] = useState('');
   const [showBatch, setShowBatch] = useState(false);
@@ -92,11 +94,15 @@ export function AdminMediaPage() {
       thumbnailUrl: imageUrl.trim() || 'https://images.unsplash.com/photo-1508057198894-247b23fe5ade?auto=format&fit=crop&w=300&q=80',
       altText: imageCaption.trim(),
       caption: imageCaption.trim(),
+      latitude: parseFloat(imageLatitude) || undefined,
+      longitude: parseFloat(imageLongitude) || undefined,
       sortOrder: selectedImages.length + 1,
       createdAt: now,
     });
     setImageCaption('');
     setImageUrl('');
+    setImageLatitude('');
+    setImageLongitude('');
     setImageErrors({});
   }
 
@@ -223,6 +229,8 @@ export function AdminMediaPage() {
               {imageErrors.caption ? <p style={{ color: 'var(--danger)' }}>{imageErrors.caption}</p> : null}
               <input value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder="图片 URL，留空则使用占位图" disabled={!selectedMediaSet} />
               {imageErrors.url ? <p style={{ color: 'var(--danger)' }}>{imageErrors.url}</p> : null}
+              <input value={imageLatitude} onChange={(e) => setImageLatitude(e.target.value)} placeholder="纬度（可选）" disabled={!selectedMediaSet} />
+              <input value={imageLongitude} onChange={(e) => setImageLongitude(e.target.value)} placeholder="经度（可选）" disabled={!selectedMediaSet} />
               <button onClick={addImage} disabled={!selectedMediaSet}>新增图片</button>
             </>
           ) : (
@@ -244,7 +252,10 @@ export function AdminMediaPage() {
               <div key={image.id} className="panel" style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
                 <div>
                   <div>{image.caption}</div>
-                  <div className="muted">顺序：{image.sortOrder}</div>
+                  <div className="muted">
+                  顺序：{image.sortOrder}
+                  {image.latitude !== undefined && <span> · {image.latitude}, {image.longitude}</span>}
+                </div>
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button onClick={() => moveImage(image.id, -1)} disabled={index === 0}>上移</button>
