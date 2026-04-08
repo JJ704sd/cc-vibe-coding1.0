@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { Map as MaplibreMap } from 'maplibre-gl';
 import {
   buildTiandituRasterStyle,
   DEFAULT_MAP_PROVIDER,
@@ -9,6 +10,7 @@ import {
 interface MapBase3DViewProps {
   className?: string;
   onReady?: () => void;
+  onMapReady?: (map: MaplibreMap) => void;
 }
 
 type MapRuntimeStatus = 'idle' | 'missing-token' | 'ready' | 'error';
@@ -70,6 +72,7 @@ export function MapBase3DView({ className, onReady }: MapBase3DViewProps) {
 
           setStatus('ready');
           onReady?.();
+          onMapReady?.(map);
         });
 
         map.on('error', () => {
