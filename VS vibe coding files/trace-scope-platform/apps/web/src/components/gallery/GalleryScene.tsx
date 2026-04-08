@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { MediaImage } from '@/types/domain';
 import { createSkyBackground } from '@/components/site/SkyBackground';
+import { useGalleryProjection } from '@/features/gallery/useGalleryProjection';
 
 const CARD_SIZE = 280;
 const MAX_ROWS = 4;
@@ -47,6 +48,10 @@ export function GalleryScene({
   const _box3 = useMemo(() => new THREE.Box3(), []);
 
   const nightFactor = nightMode ? 1.0 : 0.0;
+
+  const stageWidth = containerRef.current?.clientWidth ?? window.innerWidth;
+  const stageHeight = containerRef.current?.clientHeight ?? window.innerHeight;
+  const { projectedImages } = useGalleryProjection({ mediaImages, stageWidth, stageHeight });
 
   // Compute card positions: rows × rings arrangement
   const cardPositions = useMemo(() => {
@@ -335,8 +340,11 @@ export function GalleryScene({
       const pos = cardPositions[idx];
       if (!pos) return;
 
+      const proj = projectedImages[idx];
+      const x = proj?.isProjected ? proj.x : pos.x;
+
       const group = new THREE.Group();
-      group.position.set(pos.x, pos.y, pos.z);
+      group.position.set(x, pos.y, pos.z);
 
       // Front face — image card
       let imgMat: THREE.MeshStandardMaterial;
