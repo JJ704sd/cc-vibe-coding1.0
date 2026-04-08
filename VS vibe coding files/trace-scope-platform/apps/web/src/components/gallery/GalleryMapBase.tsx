@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import type { Map as MaplibreMap } from 'maplibre-gl';
 import { MAP_CAMERA_DEFAULTS } from '@/lib/constants/map';
 import {
   buildTiandituRasterStyle,
@@ -9,6 +8,7 @@ import {
 
 export function GalleryMapBase() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<import('maplibre-gl').Map | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -33,6 +33,8 @@ export function GalleryMapBase() {
         interactive: false,  // 静止地图
       });
 
+      mapRef.current = map;
+
       // 禁用所有交互
       map.boxZoom.disable();
       map.scrollZoom.disable();
@@ -46,6 +48,10 @@ export function GalleryMapBase() {
     void init();
     return () => {
       disposed = true;
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
     };
   }, []);
 
