@@ -105,7 +105,7 @@ vi.mock('three', () => {
     },
     Material: function MockMaterial() {},
     CanvasTexture: function MockCanvasTexture(this: { needsUpdate: boolean; dispose: ReturnType<typeof vi.fn> }) { this.needsUpdate = true; this.dispose = vi.fn(); },
-    TextureLoader: function MockTextureLoader() { this.load = vi.fn().mockReturnValue({ colorSpace: '', dispose: vi.fn() }); },
+    TextureLoader: function MockTextureLoader(this: { load: ReturnType<typeof vi.fn> }) { this.load = vi.fn().mockReturnValue({ colorSpace: '', dispose: vi.fn(), needsUpdate: true }); },
     SRGBColorSpace: '',
     BackSide: 0,
     DoubleSide: 2,
