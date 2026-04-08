@@ -1,19 +1,37 @@
 ﻿import { useMemo, useState } from 'react';
+import type { Map as MaplibreMap } from 'maplibre-gl';
 import {
   MapBase3DView,
   MapRelationshipPanel,
   MediaClusterLayer,
-  StarRelationshipLayer,
+  MapProjectionOverlay,
 } from '@/components/map';
 import { useMapRelationshipData } from '@/features/map/api/useMapRelationshipData';
+import { useProjectedMapGraph } from '@/features/map/projection/useProjectedMapGraph';
 
 export function MapPage() {
+  const [mapInstance, setMapInstance] = useState<MaplibreMap | null>(null);
   const relationshipData = useMapRelationshipData();
   const [activeProjectId] = useState<string | null>(
     relationshipData.projectGroups[0]?.projectId ?? null,
   );
   const [activeLocationId, setActiveLocationId] = useState<string | null>(
     relationshipData.nodes[0]?.id ?? null,
+  );
+
+  // Project nodes and edges using the live map instance
+  const projected = useProjectedMapGraph({
+    map: mapInstance,
+    viewModel: {
+      nodes: relationshipData.nodes,
+      edges: relationshipData.edges,
+    },
+  });
+
+  // Derive the active anchor (projected node matching activeLocationId)
+  const activeAnchor = useMemo(
+    () => projected.nodes.find((n) => n.id === activeLocationId) ?? null,
+    [projected.nodes, activeLocationId],
   );
 
   const activeCluster = useMemo(
@@ -31,15 +49,20 @@ export function MapPage() {
   return (
     <div className="map-page-shell">
       <div className="map-page-stage">
-        <MapBase3DView className="map-page-base" />
-        <StarRelationshipLayer
-          nodes={relationshipData.nodes}
-          edges={relationshipData.edges}
+        <MapBase3DView
+          className="map-page-base"
+          onMapReady={setMapInstance}
+        />
+        <MapProjectionOverlay
+          width={projected.width}
+          height={projected.height}
+          nodes={projected.nodes}
+          edges={projected.edges}
           activeProjectId={activeProjectId}
           activeLocationId={activeLocationId}
           onLocationSelect={setActiveLocationId}
         />
-        <MediaClusterLayer cluster={activeCluster} />
+        <MediaClusterLayer cluster={activeCluster} anchor={activeAnchor} />
       </div>
 
       <MapRelationshipPanel
