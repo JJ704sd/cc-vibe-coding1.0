@@ -1,32 +1,29 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { GalleryScene } from '@/components/gallery/GalleryScene';
-import { GalleryModal } from '@/components/gallery/GalleryModal';
+import { GalleryExperience } from '@/components/gallery/GalleryExperience';
 import { LoadingScreen } from '@/components/gallery/LoadingScreen';
 import { usePublicData } from '@/services/storage/usePublicData';
-import type { Project } from '@/types/domain';
+import type { MediaImage } from '@/types/domain';
 
 export function GalleryHome() {
   const [showLoader, setShowLoader] = useState(true);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [nightMode, setNightMode] = useState(() => {
     const h = new Date().getHours() + new Date().getMinutes() / 60;
     return h < 5.5 || h > 18.5;
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<MediaImage | null>(null);
 
   const reader = usePublicData();
-  const state = reader.getState();
-  const publishedProjects = reader.getPublishedProjects();
+  const allImages = reader.getAllPublishedMediaImages();
 
-  const filteredProjects = publishedProjects.filter((project) => {
+  const filteredImages = allImages.filter((img) => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
     return (
-      project.title.toLowerCase().includes(query) ||
-      project.summary?.toLowerCase().includes(query) ||
-      project.tags?.some((tag) => tag.toLowerCase().includes(query))
+      img.caption?.toLowerCase().includes(query) ||
+      img.altText?.toLowerCase().includes(query)
     );
   });
 
@@ -39,12 +36,8 @@ export function GalleryHome() {
     return () => clearInterval(iv);
   }, []);
 
-  const handleProjectSelect = useCallback((project: Project) => {
-    setSelectedProject(project);
-  }, []);
-
-  const handleClose = useCallback(() => {
-    setSelectedProject(null);
+  const handleImageSelect = useCallback((mediaImage: MediaImage) => {
+    setSelectedImage(mediaImage);
   }, []);
 
   const handleLoaderComplete = useCallback(() => {
@@ -57,19 +50,18 @@ export function GalleryHome() {
         position: 'fixed',
         inset: 0,
         overflow: 'hidden',
-        background: nightMode ? '#22295b' : '#87CEEB',
+        background: nightMode ? '#1a2245' : '#87CEEB',
         transition: 'background 2s ease',
       }}
     >
       {showLoader && <LoadingScreen nightMode={nightMode} onComplete={handleLoaderComplete} />}
 
-      {/* 3D Scene */}
+      {/* Layer 1: 3D Sky + cards */}
       {!showLoader && (
-        <GalleryScene
-          projects={filteredProjects}
-          locations={state.locations}
+        <GalleryExperience
+          mediaImages={filteredImages}
           nightMode={nightMode}
-          onProjectSelect={handleProjectSelect}
+          onImageSelect={handleImageSelect}
         />
       )}
 
@@ -212,6 +204,7 @@ export function GalleryHome() {
 
             {/* Nav links */}
             {[
+              { to: '/map', label: '地图' },
               { to: '/projects', label: '项目' },
               { to: '/admin', label: '后台' },
             ].map((item) => (
@@ -252,7 +245,7 @@ export function GalleryHome() {
               pointerEvents: 'none',
             }}
           >
-            {searchQuery ? `${filteredProjects.length} / ${publishedProjects.length}` : publishedProjects.length} projects · drag to explore
+            {searchQuery ? `${filteredImages.length} / ${allImages.length}` : allImages.length} images · drag to explore
           </div>
 
           {/* Bottom-left: Hint */}
@@ -293,15 +286,19 @@ export function GalleryHome() {
         </>
       )}
 
-      {/* Project Modal */}
-      {selectedProject && (
-        <GalleryModal
-          project={selectedProject}
-          locations={state.locations}
-          mediaSets={state.mediaSets}
-          onClose={handleClose}
-        />
+      {selectedImage && (
+        <div className="gallery-image-modal" onClick={() => setSelectedImage(null)}>
+          <img
+            src={selectedImage.url}
+            alt={selectedImage.altText}
+            onClick={(e) => e.stopPropagation()}
+          />
+          {selectedImage.caption && (
+            <p onClick={(e) => e.stopPropagation()}>{selectedImage.caption}</p>
+          )}
+        </div>
       )}
     </div>
   );
 }
+      

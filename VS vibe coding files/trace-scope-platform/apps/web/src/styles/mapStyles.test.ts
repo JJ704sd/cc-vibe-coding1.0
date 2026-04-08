@@ -10,4 +10,12 @@ describe('map layered styles', () => {
     expect(css).toContain('.map-star-layer');
     expect(css).toContain('.map-relationship-panel');
   });
+
+  it('defines projected overlay classes', () => {
+    const css = fs.readFileSync('src/styles/index.css', 'utf-8');
+
+    expect(css).toContain('.map-projection-overlay');
+    expect(css).toContain('.map-projection-overlay__svg');
+    expect(css).toContain('.map-star-layer__nodes');
+  });
 });
