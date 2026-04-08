@@ -15,7 +15,7 @@ export interface ProjectedImage {
 interface UseGalleryProjectionOptions {
   mediaImages: MediaImage[];
   stageWidth: number;
-  stageHeight: number;
+  stageHeight: number; // not currently used; y-position comes from ring layout
 }
 
 export function useGalleryProjection({
@@ -34,7 +34,7 @@ export function useGalleryProjection({
       }
       return { mediaImage, x: 0, isProjected: false };
     });
-  }, [mediaImages, stageWidth, stageHeight]);
+  }, [mediaImages, stageWidth]); // stageHeight removed - not used in projection
 
   return { projectedImages };
 }
