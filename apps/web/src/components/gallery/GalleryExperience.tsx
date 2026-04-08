@@ -22,6 +22,81 @@ interface CurvedMapSampler {
   getNormalAt(lng: number, lat: number): THREE.Vector3;
 }
 
+// --- MapLibre + Tianditu map texture (uses MapLibre's internal tile fetching) ---
+import {
+  buildTiandituRasterStyle,
+  MAP_CAMERA_DEFAULTS,
+} from '@/lib/constants/map';
+
+async function buildMapTextureFromMaplibre(): Promise<HTMLCanvasElement> {
+  const maplibre = await import('maplibre-gl');
+  const token = import.meta.env.VITE_TIANDITU_TOKEN || '3eca0d4062d71ed2ab6cfe692e0d2d40';
+
+  // Canvas size: higher resolution + higher zoom = sharper tiles on the 3D surface
+  const canvasWidth = 2048;
+  const canvasHeight = 1024;
+  const mapZoom = 7; // higher zoom = more detail per tile
+  const canvas = document.createElement('canvas');
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
+  const ctx = canvas.getContext('2d')!;
+
+  // Draw ocean background
+  ctx.fillStyle = '#1a3a5c';
+  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+  return new Promise<HTMLCanvasElement>((resolve) => {
+    // Create an off-screen MapLibre map that renders tiles to our canvas
+    // We use a "dummy" container since we don't need DOM rendering
+    const container = document.createElement('div');
+    container.style.cssText = `width:${canvasWidth}px;height:${canvasHeight}px;visibility:hidden;position:absolute;top:-9999px;left:-9999px;`;
+    document.body.appendChild(container);
+
+    const map = new maplibre.Map({
+      container,
+      style: buildTiandituRasterStyle(token),
+      center: [...MAP_CAMERA_DEFAULTS.center],
+      zoom: mapZoom,
+      maxZoom: 10,
+      attributionControl: false,
+      interactive: false,
+      fadeDuration: 0,
+    });
+
+    let resolved = false;
+    let loadTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    function resolveCanvas() {
+      if (resolved) return;
+      resolved = true;
+      if (loadTimeout) clearTimeout(loadTimeout);
+      const mapCanvas = map.getCanvas();
+      ctx.drawImage(mapCanvas, 0, 0, canvasWidth, canvasHeight);
+      map.remove();
+      document.body.removeChild(container);
+      resolve(canvas);
+    }
+
+    map.on('load', () => {
+      loadTimeout = setTimeout(resolveCanvas, 5000);
+      function checkTiles() {
+        if (resolved) return;
+        if (map.areTilesLoaded()) {
+          if (loadTimeout) clearTimeout(loadTimeout);
+          resolveCanvas();
+        } else {
+          setTimeout(checkTiles, 200);
+        }
+      }
+      setTimeout(checkTiles, 500);
+    });
+
+    map.on('error', () => {
+      resolveCanvas();
+    });
+  });
+}
+
 // --- CurvedMapSurface logic (inline, plain Three.js) ---
 const SEGMENTS_X = 32;
 const SEGMENTS_Y = 16;
@@ -276,6 +351,7 @@ export function GalleryExperience({
   const cardDataRef = useRef<{ cleanup: () => void; cardGroups: THREE.Group[] } | null>(null);
   const samplerRef = useRef<CurvedMapSampler | null>(null);
   const artworkPivotRef = useRef<THREE.Group | null>(null);
+  const curvedMatRef = useRef<THREE.Material | null>(null);
   const [samplerReady, setSamplerReady] = useState(false);
 
   const raycaster = useMemo(() => new THREE.Raycaster(), []);
@@ -291,6 +367,8 @@ export function GalleryExperience({
     const container = containerRef.current;
     const w = container.clientWidth || window.innerWidth;
     const h = container.clientHeight || window.innerHeight;
+    let disposed = false;
+    let mounted = true;
 
     // Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -343,77 +421,52 @@ export function GalleryExperience({
     // Curved map surface mesh
     const curvedGeo = buildCurvedMapGeometry();
 
-    // Create a canvas-based map texture with grid lines
-    const mapCanvas = document.createElement('canvas');
-    mapCanvas.width = 1024;
-    mapCanvas.height = 512;
-    const ctx = mapCanvas.getContext('2d');
-    if (ctx) {
-      // Base gradient
-      const baseGrad = ctx.createLinearGradient(0, 0, 0, 512);
-      baseGrad.addColorStop(0, '#1a3a5c');
-      baseGrad.addColorStop(0.5, '#0f2744');
-      baseGrad.addColorStop(1, '#0a1e35');
-      ctx.fillStyle = baseGrad;
-      ctx.fillRect(0, 0, 1024, 512);
-
-      // Longitude lines (vertical)
-      ctx.strokeStyle = 'rgba(80, 160, 220, 0.25)';
-      ctx.lineWidth = 1;
-      for (let i = 0; i <= 12; i++) {
-        const x = (i / 12) * 1024;
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, 512);
-        ctx.stroke();
-      }
-
-      // Latitude lines (horizontal)
-      for (let i = 0; i <= 6; i++) {
-        const y = (i / 6) * 512;
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(1024, y);
-        ctx.stroke();
-      }
-
-      // Coastline outlines (approximate China coast shape)
-      ctx.strokeStyle = 'rgba(100, 200, 255, 0.4)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(760, 120);
-      ctx.bezierCurveTo(800, 100, 850, 130, 900, 160);
-      ctx.bezierCurveTo(950, 200, 980, 280, 960, 340);
-      ctx.stroke();
-
-      // Taiwan island outline
-      ctx.beginPath();
-      ctx.moveTo(880, 280);
-      ctx.lineTo(900, 270);
-      ctx.lineTo(910, 285);
-      ctx.lineTo(895, 295);
-      ctx.closePath();
-      ctx.stroke();
-    }
-
-    const mapTexture = new THREE.CanvasTexture(mapCanvas);
-    mapTexture.colorSpace = THREE.SRGBColorSpace;
-    mapTexture.needsUpdate = true;
-
-    const curvedMat = new THREE.MeshStandardMaterial({
-      map: mapTexture,
-      side: THREE.DoubleSide,
-      transparent: true,
-      roughness: 0.8,
-      metalness: 0.0,
-    });
-    const curvedMesh = new THREE.Mesh(curvedGeo, curvedMat);
-    scene.add(curvedMesh);
-
-    // Sampler
+    // Sampler (同步创建，相机入场动画不依赖瓦片加载)
     const sampler = buildCurvedMapSampler();
     samplerRef.current = sampler;
-    setSamplerReady(true);
+
+    // Build Tianditu map texture asynchronously (真实瓦片纹理 via MapLibre)
+    buildMapTextureFromMaplibre().then((mapCanvas) => {
+      if (!mounted || disposed) return;
+      const mapTexture = new THREE.CanvasTexture(mapCanvas);
+      mapTexture.colorSpace = THREE.SRGBColorSpace;
+      mapTexture.magFilter = THREE.LinearFilter;
+      mapTexture.minFilter = THREE.LinearMipmapLinearFilter;
+      mapTexture.needsUpdate = true;
+
+      const curvedMat = new THREE.MeshStandardMaterial({
+        map: mapTexture,
+        side: THREE.DoubleSide,
+        transparent: true,
+        roughness: 0.8,
+        metalness: 0.0,
+      });
+      curvedMatRef.current = curvedMat;
+      const curvedMesh = new THREE.Mesh(curvedGeo, curvedMat);
+      scene.add(curvedMesh);
+      setSamplerReady(true);
+    }).catch(() => {
+      if (disposed) return;
+      // 瓦片加载失败时用占位深海色
+      const fallbackCanvas = document.createElement('canvas');
+      fallbackCanvas.width = 4;
+      fallbackCanvas.height = 4;
+      const fc = fallbackCanvas.getContext('2d')!;
+      fc.fillStyle = '#0a1e35';
+      fc.fillRect(0, 0, 4, 4);
+      const mapTexture = new THREE.CanvasTexture(fallbackCanvas);
+      const curvedMat = new THREE.MeshStandardMaterial({
+        map: mapTexture,
+        side: THREE.DoubleSide,
+        transparent: true,
+        roughness: 0.8,
+        metalness: 0.0,
+      });
+      curvedMatRef.current = curvedMat;
+      const curvedMesh = new THREE.Mesh(curvedGeo, curvedMat);
+      scene.add(curvedMesh);
+      setSamplerReady(true);
+    });
 
     // Animation loop
     let raf: number;
@@ -424,8 +477,8 @@ export function GalleryExperience({
     let introActive = true;
     let introStartTime = clock.getElapsedTime();
     const INTRO_DURATION = 3.0; // seconds
-    const introFrom = { theta: -2.0, phi: Math.PI / 2.15, zoom: 5000 };
-    const introTo = { theta: 0.4, phi: Math.PI / 2, zoom: 1200 };
+    const introFrom = { theta: 2.0, phi: Math.PI / 2.15, zoom: 5000 };
+    const introTo = { theta: -0.4, phi: Math.PI / 2, zoom: 1200 };
     const currentOrbit = { theta: introFrom.theta, phi: introFrom.phi, zoom: introFrom.zoom };
 
     // Artwork pivot rotation (like yuyuzi artworkPivot) — already created in setup
@@ -537,7 +590,7 @@ export function GalleryExperience({
       window.removeEventListener('resize', onResize);
       controls.dispose();
       curvedGeo.dispose();
-      curvedMat.dispose();
+      curvedMatRef.current?.dispose();
       renderer.dispose();
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
