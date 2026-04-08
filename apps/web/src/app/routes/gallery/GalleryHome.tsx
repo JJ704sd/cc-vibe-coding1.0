@@ -292,8 +292,14 @@ export function GalleryHome() {
 
       {selectedImage && (
         <div className="gallery-image-modal" onClick={() => setSelectedImage(null)}>
-          <img src={selectedImage.url} alt={selectedImage.altText} />
-          {selectedImage.caption && <p>{selectedImage.caption}</p>}
+          <img
+            src={selectedImage.url}
+            alt={selectedImage.altText}
+            onClick={(e) => e.stopPropagation()}
+          />
+          {selectedImage.caption && (
+            <p onClick={(e) => e.stopPropagation()}>{selectedImage.caption}</p>
+          )}
         </div>
       )}
     </div>
