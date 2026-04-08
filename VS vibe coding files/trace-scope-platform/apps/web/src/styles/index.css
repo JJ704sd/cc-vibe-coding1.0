@@ -718,6 +718,64 @@ label {
   padding: 20px 24px;
 }
 
+/* === Map Projection Overlay === */
+.map-projection-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.map-projection-overlay__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.map-projection-overlay__dom {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.map-star-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.map-star-layer__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.map-star-layer__nodes {
+  pointer-events: auto;
+  min-width: 132px;
+  border-radius: 999px;
+  border-color: rgba(147, 182, 255, 0.24);
+  background: rgba(16, 22, 40, 0.62);
+  color: rgba(238, 244, 255, 0.92);
+  box-shadow:
+    0 0 0 1px rgba(173, 203, 255, 0.05),
+    0 0 22px rgba(123, 167, 255, 0.18);
+  cursor: pointer;
+}
+
+.map-star-layer__nodes[data-active='true'] {
+  border-color: rgba(167, 214, 255, 0.5);
+  background: rgba(28, 44, 78, 0.82);
+  box-shadow:
+    0 0 0 1px rgba(190, 225, 255, 0.08),
+    0 0 30px rgba(123, 167, 255, 0.34);
+}
+
 @media (max-width: 760px) {
   .map-page-shell {
     width: min(100vw - 20px, 1280px);
