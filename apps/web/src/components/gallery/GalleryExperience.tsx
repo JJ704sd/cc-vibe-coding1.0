@@ -87,13 +87,12 @@ const FALLBACK_X = -600;
 const FALLBACK_SPACING = 250;
 
 function buildGeoMediaCards(params: {
-  scene: THREE.Scene;
+  parentGroup: THREE.Group;
   sampler: CurvedMapSampler;
   anchored: ReturnType<typeof useCurvedMapProjection>['anchored'];
   fallback: ReturnType<typeof useCurvedMapProjection>['fallback'];
-  onImageSelect: (mediaImage: MediaImage) => void;
 }): { cleanup: () => void; cardGroups: THREE.Group[] } {
-  const { scene, sampler, anchored, fallback } = params;
+  const { parentGroup, sampler, anchored, fallback } = params;
   const textureLoader = new THREE.TextureLoader();
   const sharedGeometry = new THREE.PlaneGeometry(CARD_WIDTH, CARD_HEIGHT);
   const darkMaterial = new THREE.MeshStandardMaterial({
@@ -171,8 +170,10 @@ function buildGeoMediaCards(params: {
     group.userData.initialRot = group.rotation.clone();
     group.userData.phase = Math.random() * Math.PI * 2;
     group.userData.driftAmp = 8 + Math.random() * 12;
+    group.userData.entryPhase = (anchored.indexOf(placement)) * 0.1; // staggered entry delay
+    group.userData.entryTime = -1; // will be set when intro starts
 
-    scene.add(group);
+    parentGroup.add(group);
     groups.push(group);
   });
 
@@ -233,8 +234,10 @@ function buildGeoMediaCards(params: {
     group.userData.initialRot = group.rotation.clone();
     group.userData.phase = Math.random() * Math.PI * 2;
     group.userData.driftAmp = 8 + Math.random() * 12;
+    group.userData.entryPhase = (index) * 0.1; // staggered entry delay
+    group.userData.entryTime = -1;
 
-    scene.add(group);
+    parentGroup.add(group);
     groups.push(group);
   });
 
@@ -249,7 +252,7 @@ function buildGeoMediaCards(params: {
           }
         }
       });
-      scene.remove(group);
+      parentGroup.remove(group);
     });
     sharedGeometry.dispose();
     darkMaterial.dispose();
@@ -272,6 +275,7 @@ export function GalleryExperience({
   const skyUniformsRef = useRef<ReturnType<typeof createSkyBackground>['uniforms'] | null>(null);
   const cardDataRef = useRef<{ cleanup: () => void; cardGroups: THREE.Group[] } | null>(null);
   const samplerRef = useRef<CurvedMapSampler | null>(null);
+  const artworkPivotRef = useRef<THREE.Group | null>(null);
   const [samplerReady, setSamplerReady] = useState(false);
 
   const raycaster = useMemo(() => new THREE.Raycaster(), []);
@@ -311,11 +315,14 @@ export function GalleryExperience({
     fillLight.position.set(-1, -0.5, -1).normalize();
     scene.add(fillLight);
 
-    // Camera
+    // Camera — starts far for intro
     const camera = new THREE.PerspectiveCamera(55, w / h, 1, 10000);
-    camera.position.set(0, 0, 800);
-    camera.lookAt(0, 0, 0);
     cameraRef.current = camera;
+
+    // Artwork pivot group (rotates during intro)
+    const artworkPivot = new THREE.Group();
+    scene.add(artworkPivot);
+    artworkPivotRef.current = artworkPivot;
 
     // OrbitControls
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -413,6 +420,20 @@ export function GalleryExperience({
     let clock = new THREE.Clock();
     let time = 0;
 
+    // Intro cinematic state (like yuyuzi gallery)
+    let introActive = true;
+    let introStartTime = clock.getElapsedTime();
+    const INTRO_DURATION = 3.0; // seconds
+    const introFrom = { theta: -2.0, phi: Math.PI / 2.15, zoom: 5000 };
+    const introTo = { theta: 0.4, phi: Math.PI / 2, zoom: 1200 };
+    const currentOrbit = { theta: introFrom.theta, phi: introFrom.phi, zoom: introFrom.zoom };
+
+    // Artwork pivot rotation (like yuyuzi artworkPivot) — already created in setup
+
+    function easeInOutCubic(t: number) {
+      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
     function animate() {
       raf = requestAnimationFrame(animate);
       time += 0.005;
@@ -424,18 +445,77 @@ export function GalleryExperience({
       }
       skyMesh.position.copy(camera.position);
 
-      // Card drift animation (same as old GalleryScene)
-      if (cardDataRef.current) {
-        cardDataRef.current.cardGroups.forEach((group) => {
-          const { initialPos, initialRot, phase, driftAmp } = group.userData;
-          if (!initialPos || !initialRot) return;
-          group.position.y = initialPos.y + Math.sin(time * 0.4 + phase) * driftAmp;
-          group.rotation.x = initialRot.x + Math.sin(time * 0.25 + phase) * 0.03;
-          group.rotation.y = initialRot.y + Math.cos(time * 0.3 + phase) * 0.03;
-        });
+      // Intro cinematic: camera spiral inward
+      if (introActive) {
+        const elapsed = clock.getElapsedTime() - introStartTime;
+        const t = Math.min(elapsed / INTRO_DURATION, 1.0);
+        const e = easeInOutCubic(t);
+
+        // Camera spiral: horizontal sweep + zoom in
+        const spiralSweep = 5.5;
+        currentOrbit.theta = introFrom.theta + (introTo.theta - introFrom.theta + spiralSweep) * e;
+        currentOrbit.phi = introFrom.phi + (introTo.phi - introFrom.phi) * e;
+        currentOrbit.zoom = introFrom.zoom + (introTo.zoom - introFrom.zoom) * e;
+
+        camera.position.x = currentOrbit.zoom * Math.sin(currentOrbit.phi) * Math.cos(currentOrbit.theta);
+        camera.position.y = currentOrbit.zoom * Math.cos(currentOrbit.phi);
+        camera.position.z = currentOrbit.zoom * Math.sin(currentOrbit.phi) * Math.sin(currentOrbit.theta);
+        camera.lookAt(0, 0, 0);
+
+        // Rotate artwork pivot (like yuyuzi artworkPivot.rotation.y = time * 0.03)
+        artworkPivot.rotation.y = time * 0.03;
+
+        if (t >= 1.0) {
+          introActive = false;
+          controls.target.set(0, 0, 0);
+        }
+      } else {
+        controls.update();
       }
 
-      controls.update();
+      // Card entry + drift animation (like yuyuzi per-card animation)
+      if (cardDataRef.current) {
+        cardDataRef.current.cardGroups.forEach((group) => {
+          const { initialPos, initialRot, phase, driftAmp, entryPhase } = group.userData;
+          if (!initialPos || !initialRot) return;
+
+          // Initialize entry time when intro starts
+          if (group.userData.entryTime < 0) {
+            group.userData.entryTime = clock.getElapsedTime();
+          }
+
+          const entryElapsed = clock.getElapsedTime() - group.userData.entryTime;
+          const entryT = Math.max(0, Math.min(1, entryElapsed / (INTRO_DURATION * 2)));
+          const entryEase = entryT < 0.5 ? 2 * entryT * entryT : 1 - Math.pow(-2 * entryT + 2, 2) / 2;
+
+          // Entry: rotate 360° + float up from below
+          const rotationAmount = (1 - entryEase) * Math.PI * 2;
+          const entryYOffset = Math.max(0, (1 - entryEase) * 100);
+
+          // Base drift
+          const driftY = initialPos.y + Math.sin(time * 0.4 + phase) * driftAmp;
+
+          group.position.y = driftY - entryYOffset;
+          group.rotation.y = initialRot.y + rotationAmount;
+          group.rotation.x = initialRot.x + Math.sin(time * 0.25 + phase) * 0.03;
+
+          // Distance-based opacity
+          const dist = camera.position.distanceTo(group.position);
+          const NEAR = 1200, FAR = 4000;
+          const opacityT = Math.max(0, Math.min(1, (dist - NEAR) / (FAR - NEAR)));
+          const cardOpacity = 0.90 - opacityT * 0.75;
+          const finalOpacity = cardOpacity * entryEase;
+
+          const frontMesh = group.children[0] as THREE.Mesh;
+          const backMesh = group.children[1] as THREE.Mesh;
+          if (frontMesh?.material) {
+            (frontMesh.material as THREE.MeshStandardMaterial).opacity = finalOpacity;
+          }
+          if (backMesh?.material) {
+            (backMesh.material as THREE.MeshStandardMaterial).opacity = finalOpacity;
+          }
+        });
+      }
 
       renderer.render(scene, camera);
     }
@@ -498,11 +578,10 @@ export function GalleryExperience({
     }
 
     const result = buildGeoMediaCards({
-      scene: sceneRef.current,
-      sampler: samplerRef.current,
+      parentGroup: artworkPivotRef.current!,
+      sampler: samplerRef.current!,
       anchored,
       fallback,
-      onImageSelect,
     });
     cardDataRef.current = result;
 
