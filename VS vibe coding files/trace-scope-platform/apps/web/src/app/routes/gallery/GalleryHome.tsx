@@ -1,7 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { GalleryScene } from '@/components/gallery/GalleryScene';
-import { GalleryMapBase } from '@/components/gallery/GalleryMapBase';
+import { GalleryExperience } from '@/components/gallery/GalleryExperience';
 import { LoadingScreen } from '@/components/gallery/LoadingScreen';
 import { usePublicData } from '@/services/storage/usePublicData';
 import type { MediaImage } from '@/types/domain';
@@ -55,14 +54,11 @@ export function GalleryHome() {
         transition: 'background 2s ease',
       }}
     >
-      {/* Layer 0: Static map base */}
-      <GalleryMapBase />
-
       {showLoader && <LoadingScreen nightMode={nightMode} onComplete={handleLoaderComplete} />}
 
       {/* Layer 1: 3D Sky + cards */}
       {!showLoader && (
-        <GalleryScene
+        <GalleryExperience
           mediaImages={filteredImages}
           nightMode={nightMode}
           onImageSelect={handleImageSelect}
