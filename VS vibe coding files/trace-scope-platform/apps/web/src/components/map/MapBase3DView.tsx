@@ -15,7 +15,7 @@ interface MapBase3DViewProps {
 
 type MapRuntimeStatus = 'idle' | 'missing-token' | 'ready' | 'error';
 
-export function MapBase3DView({ className, onReady }: MapBase3DViewProps) {
+export function MapBase3DView({ className, onReady, onMapReady }: MapBase3DViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [status, setStatus] = useState<MapRuntimeStatus>('idle');
 
