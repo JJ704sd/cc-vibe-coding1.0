@@ -44,7 +44,6 @@ export function GalleryScene({
   const textureLoader = useMemo(() => new THREE.TextureLoader(), []);
   const sharedGeom = useMemo(() => new THREE.PlaneGeometry(CARD_SIZE, CARD_SIZE), []);
   const _worldPos = useMemo(() => new THREE.Vector3(), []);
-  const _hitPoint = useMemo(() => new THREE.Vector3(), []);
   const _box3 = useMemo(() => new THREE.Box3(), []);
 
   const nightFactor = nightMode ? 1.0 : 0.0;
