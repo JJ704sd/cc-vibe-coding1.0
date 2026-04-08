@@ -1,4 +1,4 @@
-﻿import type { Location, MediaImage, MediaSet, Project, RouteEntity } from '@/types/domain';
+import type { Location, MediaImage, MediaSet, Project, RouteEntity } from '@/types/domain';
 import type { AdminDataState, createAdminDataStore } from '@/services/storage/adminDataStore';
 
 export type AdminDataStore = ReturnType<typeof createAdminDataStore>;
@@ -14,6 +14,15 @@ export function createPublicDataReader(store: AdminDataStore, snapshot?: AdminDa
 
   function getPublishedProjectIdsFromState(state: AdminDataState) {
     return new Set(getPublishedProjectsFromState(state).map((project) => project.id));
+  }
+
+  function getAllPublishedMediaImagesFromState(state: AdminDataState): MediaImage[] {
+    const publishedProjectIds = getPublishedProjectIdsFromState(state);
+    const publishedMediaSets = state.mediaSets.filter(
+      (ms) => publishedProjectIds.has(ms.projectId),
+    );
+    const mediaSetIds = new Set(publishedMediaSets.map((ms) => ms.id));
+    return state.mediaImages.filter((img) => mediaSetIds.has(img.mediaSetId));
   }
 
   return {
@@ -67,6 +76,9 @@ export function createPublicDataReader(store: AdminDataStore, snapshot?: AdminDa
       }
 
       return state.mediaImages.filter((image) => image.mediaSetId === mediaSet.id);
+    },
+    getAllPublishedMediaImages(): MediaImage[] {
+      return getAllPublishedMediaImagesFromState(getState());
     },
   };
 }
