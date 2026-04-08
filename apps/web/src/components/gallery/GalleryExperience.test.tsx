@@ -94,14 +94,19 @@ vi.mock('three', () => {
       this.userData = {};
       this.add = vi.fn();
     },
-    Group: function MockGroup(this: { position: { copy: ReturnType<typeof vi.fn> }; children: object[]; add: ReturnType<typeof vi.fn>; remove: ReturnType<typeof vi.fn>; traverse: ReturnType<typeof vi.fn>; lookAt: ReturnType<typeof vi.fn>; removeFromParent: ReturnType<typeof vi.fn> }) {
-      this.position = { copy: vi.fn() };
+    Group: function MockGroup(this: { position: { copy: ReturnType<typeof vi.fn>; clone: ReturnType<typeof vi.fn> }; children: object[]; add: ReturnType<typeof vi.fn>; remove: ReturnType<typeof vi.fn>; traverse: ReturnType<typeof vi.fn>; lookAt: ReturnType<typeof vi.fn>; removeFromParent: ReturnType<typeof vi.fn>; rotateX: ReturnType<typeof vi.fn>; rotateY: ReturnType<typeof vi.fn>; rotateZ: ReturnType<typeof vi.fn>; userData: object; rotation: object }) {
+      this.position = { copy: vi.fn(), clone: vi.fn().mockReturnValue({ x: 0, y: 0, z: 0 }) };
+      this.rotation = { x: 0, y: 0, z: 0, clone: vi.fn().mockReturnValue({ x: 0, y: 0, z: 0 }) };
       this.children = [];
       this.add = vi.fn();
       this.remove = vi.fn();
       this.traverse = vi.fn();
       this.lookAt = vi.fn();
       this.removeFromParent = vi.fn();
+      this.rotateX = vi.fn().mockReturnThis();
+      this.rotateY = vi.fn().mockReturnThis();
+      this.rotateZ = vi.fn().mockReturnThis();
+      this.userData = {};
     },
     Material: function MockMaterial() {},
     CanvasTexture: function MockCanvasTexture(this: { needsUpdate: boolean; dispose: ReturnType<typeof vi.fn> }) { this.needsUpdate = true; this.dispose = vi.fn(); },

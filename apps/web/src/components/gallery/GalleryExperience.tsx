@@ -92,8 +92,8 @@ function buildGeoMediaCards(params: {
   anchored: ReturnType<typeof useCurvedMapProjection>['anchored'];
   fallback: ReturnType<typeof useCurvedMapProjection>['fallback'];
   onImageSelect: (mediaImage: MediaImage) => void;
-}): () => void {
-  const { scene, sampler, anchored, fallback, onImageSelect } = params;
+}): { cleanup: () => void; cardGroups: THREE.Group[] } {
+  const { scene, sampler, anchored, fallback } = params;
   const textureLoader = new THREE.TextureLoader();
   const sharedGeometry = new THREE.PlaneGeometry(CARD_WIDTH, CARD_HEIGHT);
   const darkMaterial = new THREE.MeshStandardMaterial({
@@ -161,6 +161,17 @@ function buildGeoMediaCards(params: {
     // Orient card to face outward from curved surface
     group.lookAt(0, group.position.y, 0);
 
+    // Add subtle random tilt (like old scene)
+    group.rotateX((Math.random() - 0.5) * 0.06);
+    group.rotateY((Math.random() - 0.5) * 0.06);
+    group.rotateZ((Math.random() - 0.5) * 0.04);
+
+    // Store animation data on group userData
+    group.userData.initialPos = group.position.clone();
+    group.userData.initialRot = group.rotation.clone();
+    group.userData.phase = Math.random() * Math.PI * 2;
+    group.userData.driftAmp = 8 + Math.random() * 12;
+
     scene.add(group);
     groups.push(group);
   });
@@ -212,12 +223,23 @@ function buildGeoMediaCards(params: {
     // Face toward the center (toward +x direction)
     group.lookAt(0, group.position.y, 0);
 
+    // Add subtle random tilt
+    group.rotateX((Math.random() - 0.5) * 0.06);
+    group.rotateY((Math.random() - 0.5) * 0.06);
+    group.rotateZ((Math.random() - 0.5) * 0.04);
+
+    // Store animation data
+    group.userData.initialPos = group.position.clone();
+    group.userData.initialRot = group.rotation.clone();
+    group.userData.phase = Math.random() * Math.PI * 2;
+    group.userData.driftAmp = 8 + Math.random() * 12;
+
     scene.add(group);
     groups.push(group);
   });
 
-  // Return cleanup function
-  return () => {
+  // Return cleanup + card groups
+  const cleanup = () => {
     groups.forEach((group) => {
       group.traverse((obj) => {
         if (obj instanceof THREE.Mesh) {
@@ -232,6 +254,8 @@ function buildGeoMediaCards(params: {
     sharedGeometry.dispose();
     darkMaterial.dispose();
   };
+
+  return { cleanup, cardGroups: groups };
 }
 
 // --- Main Component ---
@@ -246,7 +270,7 @@ export function GalleryExperience({
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const skyUniformsRef = useRef<ReturnType<typeof createSkyBackground>['uniforms'] | null>(null);
-  const cardCleanupRef = useRef<(() => void) | null>(null);
+  const cardDataRef = useRef<{ cleanup: () => void; cardGroups: THREE.Group[] } | null>(null);
   const samplerRef = useRef<CurvedMapSampler | null>(null);
   const [samplerReady, setSamplerReady] = useState(false);
 
@@ -311,9 +335,70 @@ export function GalleryExperience({
 
     // Curved map surface mesh
     const curvedGeo = buildCurvedMapGeometry();
+
+    // Create a canvas-based map texture with grid lines
+    const mapCanvas = document.createElement('canvas');
+    mapCanvas.width = 1024;
+    mapCanvas.height = 512;
+    const ctx = mapCanvas.getContext('2d');
+    if (ctx) {
+      // Base gradient
+      const baseGrad = ctx.createLinearGradient(0, 0, 0, 512);
+      baseGrad.addColorStop(0, '#1a3a5c');
+      baseGrad.addColorStop(0.5, '#0f2744');
+      baseGrad.addColorStop(1, '#0a1e35');
+      ctx.fillStyle = baseGrad;
+      ctx.fillRect(0, 0, 1024, 512);
+
+      // Longitude lines (vertical)
+      ctx.strokeStyle = 'rgba(80, 160, 220, 0.25)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 12; i++) {
+        const x = (i / 12) * 1024;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, 512);
+        ctx.stroke();
+      }
+
+      // Latitude lines (horizontal)
+      for (let i = 0; i <= 6; i++) {
+        const y = (i / 6) * 512;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(1024, y);
+        ctx.stroke();
+      }
+
+      // Coastline outlines (approximate China coast shape)
+      ctx.strokeStyle = 'rgba(100, 200, 255, 0.4)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(760, 120);
+      ctx.bezierCurveTo(800, 100, 850, 130, 900, 160);
+      ctx.bezierCurveTo(950, 200, 980, 280, 960, 340);
+      ctx.stroke();
+
+      // Taiwan island outline
+      ctx.beginPath();
+      ctx.moveTo(880, 280);
+      ctx.lineTo(900, 270);
+      ctx.lineTo(910, 285);
+      ctx.lineTo(895, 295);
+      ctx.closePath();
+      ctx.stroke();
+    }
+
+    const mapTexture = new THREE.CanvasTexture(mapCanvas);
+    mapTexture.colorSpace = THREE.SRGBColorSpace;
+    mapTexture.needsUpdate = true;
+
     const curvedMat = new THREE.MeshStandardMaterial({
-      color: 0x1a3a5c,
+      map: mapTexture,
       side: THREE.DoubleSide,
+      transparent: true,
+      roughness: 0.8,
+      metalness: 0.0,
     });
     const curvedMesh = new THREE.Mesh(curvedGeo, curvedMat);
     scene.add(curvedMesh);
@@ -338,6 +423,17 @@ export function GalleryExperience({
         skyUniformsRef.current.uNightFactor.value = nightMode ? 1.0 : 0.0;
       }
       skyMesh.position.copy(camera.position);
+
+      // Card drift animation (same as old GalleryScene)
+      if (cardDataRef.current) {
+        cardDataRef.current.cardGroups.forEach((group) => {
+          const { initialPos, initialRot, phase, driftAmp } = group.userData;
+          if (!initialPos || !initialRot) return;
+          group.position.y = initialPos.y + Math.sin(time * 0.4 + phase) * driftAmp;
+          group.rotation.x = initialRot.x + Math.sin(time * 0.25 + phase) * 0.03;
+          group.rotation.y = initialRot.y + Math.cos(time * 0.3 + phase) * 0.03;
+        });
+      }
 
       controls.update();
 
@@ -396,23 +492,23 @@ export function GalleryExperience({
     if (!samplerReady || !sceneRef.current || !samplerRef.current) return;
 
     // Clean up previous cards
-    if (cardCleanupRef.current) {
-      cardCleanupRef.current();
-      cardCleanupRef.current = null;
+    if (cardDataRef.current) {
+      cardDataRef.current.cleanup();
+      cardDataRef.current = null;
     }
 
-    const cleanup = buildGeoMediaCards({
+    const result = buildGeoMediaCards({
       scene: sceneRef.current,
       sampler: samplerRef.current,
       anchored,
       fallback,
       onImageSelect,
     });
-    cardCleanupRef.current = cleanup;
+    cardDataRef.current = result;
 
     return () => {
-      cleanup();
-      cardCleanupRef.current = null;
+      result.cleanup();
+      cardDataRef.current = null;
     };
   }, [samplerReady, anchored, fallback, onImageSelect]);
 
