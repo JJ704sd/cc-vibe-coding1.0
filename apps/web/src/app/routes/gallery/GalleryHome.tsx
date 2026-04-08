@@ -14,6 +14,7 @@ export function GalleryHome() {
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<MediaImage | null>(null);
 
   const reader = usePublicData();
   const allImages = reader.getAllPublishedMediaImages();
@@ -36,8 +37,8 @@ export function GalleryHome() {
     return () => clearInterval(iv);
   }, []);
 
-  const handleImageSelect = useCallback((img: MediaImage) => {
-    // TODO: open image viewer modal (future task)
+  const handleImageSelect = useCallback((mediaImage: MediaImage) => {
+    setSelectedImage(mediaImage);
   }, []);
 
   const handleLoaderComplete = useCallback(() => {
@@ -287,6 +288,13 @@ export function GalleryHome() {
             © 2026 Trace Scope
           </div>
         </>
+      )}
+
+      {selectedImage && (
+        <div className="gallery-image-modal" onClick={() => setSelectedImage(null)}>
+          <img src={selectedImage.url} alt={selectedImage.altText} />
+          {selectedImage.caption && <p>{selectedImage.caption}</p>}
+        </div>
       )}
     </div>
   );
