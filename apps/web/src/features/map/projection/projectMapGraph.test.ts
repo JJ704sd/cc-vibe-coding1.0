@@ -79,6 +79,124 @@ describe('projectMapGraph', () => {
     expect(edge.isVisible).toBe(true);
   });
 
+  it('marks edge invisible when both endpoints are off-screen', () => {
+    const viewModel = {
+      nodes: [
+        {
+          id: 'node-a',
+          projectId: 'project-1',
+          locationId: 'loc-a',
+          title: 'Node A',
+          description: '',
+          latitude: 90,
+          longitude: 180,
+          addressText: '',
+          visitOrder: 1,
+          mediaSetIds: [],
+          routeIds: [],
+        },
+        {
+          id: 'node-b',
+          projectId: 'project-1',
+          locationId: 'loc-b',
+          title: 'Node B',
+          description: '',
+          latitude: 91,
+          longitude: 181,
+          addressText: '',
+          visitOrder: 2,
+          mediaSetIds: [],
+          routeIds: [],
+        },
+      ],
+      edges: [
+        {
+          id: 'edge-ab',
+          projectId: 'project-1',
+          routeId: 'route-1',
+          sourceLocationId: 'loc-a',
+          targetLocationId: 'loc-b',
+          sourceNodeId: 'node-a',
+          targetNodeId: 'node-b',
+          lineStyle: 'solid' as const,
+          color: '#72e3d2',
+        },
+      ],
+    };
+
+    const fakeProjector: MapProjector['project'] = () => ({ x: 9999, y: 9999 });
+
+    const result: ProjectedMapGraph = projectMapGraph(viewModel, {
+      project: fakeProjector,
+      width: 800,
+      height: 600,
+    });
+
+    // Edge should be invisible when both endpoints are off-screen
+    expect(result.edges[0].isVisible).toBe(false);
+  });
+
+  it('keeps edge visible when at least one endpoint is visible', () => {
+    const viewModel = {
+      nodes: [
+        {
+          id: 'node-a',
+          projectId: 'project-1',
+          locationId: 'loc-a',
+          title: 'Node A',
+          description: '',
+          latitude: 31.2,
+          longitude: 121.4,
+          addressText: '',
+          visitOrder: 1,
+          mediaSetIds: [],
+          routeIds: [],
+        },
+        {
+          id: 'node-b',
+          projectId: 'project-1',
+          locationId: 'loc-b',
+          title: 'Node B',
+          description: '',
+          latitude: 90,
+          longitude: 180,
+          addressText: '',
+          visitOrder: 2,
+          mediaSetIds: [],
+          routeIds: [],
+        },
+      ],
+      edges: [
+        {
+          id: 'edge-ab',
+          projectId: 'project-1',
+          routeId: 'route-1',
+          sourceLocationId: 'loc-a',
+          targetLocationId: 'loc-b',
+          sourceNodeId: 'node-a',
+          targetNodeId: 'node-b',
+          lineStyle: 'solid' as const,
+          color: '#72e3d2',
+        },
+      ],
+    };
+
+    const fakeProjector: MapProjector['project'] = (lng: number, lat: number) => {
+      if (lng === 121.4 && lat === 31.2) return { x: 400, y: 300 };
+      return { x: 9999, y: 9999 };
+    };
+
+    const result: ProjectedMapGraph = projectMapGraph(viewModel, {
+      project: fakeProjector,
+      width: 800,
+      height: 600,
+    });
+
+    // Edge should be visible because one endpoint (node-a) is visible
+    expect(result.edges[0].isVisible).toBe(true);
+    expect(result.edges[0].path).toBe('M 400 300 L 9999 9999');
+  });
+
   it('marks nodes as invisible when outside viewport bounds', () => {
     const viewModel = {
       nodes: [
