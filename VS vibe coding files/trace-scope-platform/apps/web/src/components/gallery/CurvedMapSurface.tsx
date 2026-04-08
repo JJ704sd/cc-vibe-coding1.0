@@ -27,7 +27,6 @@ export function CurvedMapSurface({ onSamplerReady }: CurvedMapSurfaceProps) {
   const geometry = useMemo(() => {
     const geo = new THREE.PlaneGeometry(1, 1, SEGMENTS_X, SEGMENTS_Y);
     const positions = geo.attributes.position;
-    const vector = new THREE.Vector3();
 
     for (let iy = 0; iy <= SEGMENTS_Y; iy++) {
       for (let ix = 0; ix <= SEGMENTS_X; ix++) {
@@ -62,9 +61,8 @@ export function CurvedMapSurface({ onSamplerReady }: CurvedMapSurfaceProps) {
     onSamplerReady(sampler);
   }, [onSamplerReady, sampler]);
 
-  return (
-    <mesh geometry={geometry}>
-      <meshStandardMaterial color={0x1a3a5c} side={THREE.DoubleSide} />
-    </mesh>
-  );
+  // Returns null — geometry is built but scene integration happens in GalleryExperience
+  // The sampler is exposed via onSamplerReady callback for parent to use
+  void geometry;
+  return null;
 }
