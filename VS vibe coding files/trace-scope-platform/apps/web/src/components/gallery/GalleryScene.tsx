@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback, useMemo } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import type { Project, Location } from '@/types/domain';
+import type { MediaImage } from '@/types/domain';
 import { createSkyBackground } from '@/components/site/SkyBackground';
 
 const CARD_SIZE = 280;
@@ -12,17 +12,15 @@ const RING_SPACING = 800;
 const CARDS_PER_RING = 4;
 
 interface GallerySceneProps {
-  projects: Project[];
-  locations: Location[];
+  mediaImages: MediaImage[];
   nightMode: boolean;
-  onProjectSelect: (project: Project) => void;
+  onImageSelect: (mediaImage: MediaImage) => void;
 }
 
 export function GalleryScene({
-  projects,
-  locations,
+  mediaImages,
   nightMode,
-  onProjectSelect,
+  onImageSelect,
 }: GallerySceneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -53,9 +51,9 @@ export function GalleryScene({
 
   // Compute card positions: rows × rings arrangement
   const cardPositions = useMemo(() => {
-    const rows = Math.min(MAX_ROWS, projects.length);
+    const rows = Math.min(MAX_ROWS, mediaImages.length);
     const positions: Array<{ x: number; y: number; z: number; angle: number }> = [];
-    projects.forEach((_, index) => {
+    mediaImages.forEach((_, index) => {
       const row = index % rows;
       const posInRow = Math.floor(index / rows);
       const ring = Math.floor(posInRow / CARDS_PER_RING);
@@ -72,7 +70,7 @@ export function GalleryScene({
       positions.push({ x, y, z, angle });
     });
     return positions;
-  }, [projects]);
+  }, [mediaImages]);
 
   // Create back-face canvas texture
   const createBackTexture = useCallback((title: string, year?: string, medium?: string, dimensions?: string, description?: string) => {
@@ -334,7 +332,7 @@ export function GalleryScene({
     }
     cardDataRef.current = [];
 
-    projects.forEach((project, idx) => {
+    mediaImages.forEach((mediaImage, idx) => {
       const pos = cardPositions[idx];
       if (!pos) return;
 
@@ -343,8 +341,8 @@ export function GalleryScene({
 
       // Front face — image card
       let imgMat: THREE.MeshStandardMaterial;
-      if (project.coverImage) {
-        const tex = textureLoader.load(project.coverImage);
+      if (mediaImage.url) {
+        const tex = textureLoader.load(mediaImage.url);
         tex.colorSpace = THREE.SRGBColorSpace;
         imgMat = new THREE.MeshStandardMaterial({
           map: tex,
@@ -368,11 +366,11 @@ export function GalleryScene({
         });
       }
       const imgMesh = new THREE.Mesh(sharedGeom, imgMat);
-      imgMesh.userData = { projectId: project.id };
+      imgMesh.userData = { mediaImage };
       group.add(imgMesh);
 
       // Back face — info card
-      const backTex = createBackTexture(project.title);
+      const backTex = createBackTexture(mediaImage.caption || mediaImage.altText);
       const backMat = new THREE.MeshStandardMaterial({
         map: backTex,
         roughness: 0.5,
@@ -405,7 +403,7 @@ export function GalleryScene({
       });
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projects, cardPositions, createBackTexture]);
+  }, [mediaImages, cardPositions, createBackTexture]);
 
   // Raycasting — pre-filter with bounding boxes
   const raycastFiltered = useCallback(() => {
@@ -413,7 +411,7 @@ export function GalleryScene({
     const meshes: THREE.Mesh[] = [];
     cardDataRef.current.forEach((data) => {
       const frontMesh = data.group.children[0] as THREE.Mesh;
-      if (frontMesh?.userData?.projectId) meshes.push(frontMesh);
+      if (frontMesh?.userData?.mediaImage) meshes.push(frontMesh);
     });
     return raycaster.intersectObjects(meshes);
   }, [raycaster]);
@@ -449,9 +447,8 @@ export function GalleryScene({
       raycaster.setFromCamera(mouse, cameraRef.current);
       const hits = raycastFiltered();
       if (hits.length > 0) {
-        const projectId = hits[0].object.userData.projectId;
-        const project = projects.find((p) => p.id === projectId);
-        if (project) onProjectSelect(project);
+        const mediaImage = hits[0].object.userData.mediaImage;
+        if (mediaImage) onImageSelect(mediaImage);
       }
     }
 
@@ -463,7 +460,7 @@ export function GalleryScene({
       container.removeEventListener('pointermove', onPointerMove);
       container.removeEventListener('pointerup', onPointerUp);
     };
-  }, [projects, onProjectSelect, raycaster, mouse, raycastFiltered]);
+  }, [onImageSelect, raycaster, mouse, raycastFiltered]);
 
   return (
     <div
