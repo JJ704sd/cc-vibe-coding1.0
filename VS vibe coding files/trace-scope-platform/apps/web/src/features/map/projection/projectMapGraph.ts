@@ -42,7 +42,7 @@ export function projectMapGraph(
         return null;
       }
 
-      const isVisible = sourceNode.isVisible && targetNode.isVisible;
+      const isVisible = sourceNode.isVisible || targetNode.isVisible;
       const path = `M ${sourceNode.x} ${sourceNode.y} L ${targetNode.x} ${targetNode.y}`;
 
       return {
