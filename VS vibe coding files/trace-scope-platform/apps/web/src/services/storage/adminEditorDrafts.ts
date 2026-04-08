@@ -1,4 +1,4 @@
-﻿import type { Location, MediaSet, Project, RouteEntity } from '@/types/domain';
+﻿import type { Location, MediaImage, MediaSet, Project, RouteEntity } from '@/types/domain';
 
 export interface ProjectDraft {
   title: string;
@@ -67,6 +67,21 @@ export function createMediaSetDraft(mediaSet?: MediaSet): MediaSetDraft {
     title: mediaSet?.title ?? '',
     description: mediaSet?.description ?? '',
     isFeatured: mediaSet?.isFeatured ?? false,
+  };
+}
+
+export function createMediaImageDraft(data?: Partial<MediaImage>) {
+  return {
+    id: data?.id ?? '',
+    mediaSetId: data?.mediaSetId ?? '',
+    url: data?.url ?? '',
+    thumbnailUrl: data?.thumbnailUrl ?? '',
+    altText: data?.altText ?? '',
+    caption: data?.caption ?? '',
+    sortOrder: data?.sortOrder ?? 0,
+    latitude: data?.latitude,
+    longitude: data?.longitude,
+    createdAt: data?.createdAt ?? '',
   };
 }
 
