@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
-import type { Project } from '@/types/domain';
 
-export function HeroEntryPanel({ project }: { project: Project }) {
+export function HeroEntryPanel({ project }: { project: { id: string; title: string; summary: string } }) {
   return (
     <section className="glass animate-in" style={{ padding: '40px', overflow: 'hidden' }}>
       <div style={{ display: 'grid', gap: '32px', gridTemplateColumns: '1fr 1fr' }}>
