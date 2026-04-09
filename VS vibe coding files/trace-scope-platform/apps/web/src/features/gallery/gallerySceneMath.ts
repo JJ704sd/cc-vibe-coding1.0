@@ -25,15 +25,15 @@ interface UvToCurvedWorldParams {
 
 export function uvToCurvedWorld(params: UvToCurvedWorldParams): THREE.Vector3 {
   const { u, v, radius, arcSpan, mapHeight } = params;
-  const angle = -arcSpan / 2 + arcSpan * clampToUnit(u);
-  const x = Math.sin(angle) * radius;
-  const z = Math.cos(angle) * radius;
-  const y = (0.5 - clampToUnit(v)) * mapHeight;
+  // Flat map lying horizontally on XZ plane
+  // x: left-right (longitude: 73 west to 135 east), y: 0 (flat on ground), z: front-back (latitude)
+  const x = (u - 0.5) * radius * 2;
+  const z = (v - 0.5) * mapHeight;
+  const y = 0;
   return new THREE.Vector3(x, y, z);
 }
 
 export function estimateCurvedNormal(u: number, arcSpan: number): THREE.Vector3 {
-  const angle = -arcSpan / 2 + arcSpan * clampToUnit(u);
-  const normal = new THREE.Vector3(Math.sin(angle), 0, Math.cos(angle));
-  return normal.normalize();
+  // Flat map, normal points up
+  return new THREE.Vector3(0, 1, 0);
 }
