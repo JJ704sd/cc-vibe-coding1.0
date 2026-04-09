@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
-import type { Project } from '@/types/domain';
 
-export function ProjectCard({ project }: { project: Project }) {
+export function ProjectCard({ project }: { project: { id: string; title: string; summary: string; coverImage: string | null; tags: string[] } }) {
   return (
     <Link
       to={`/projects/${project.id}`}
@@ -9,19 +8,32 @@ export function ProjectCard({ project }: { project: Project }) {
       style={{ display: 'block', overflow: 'hidden', padding: 0, textDecoration: 'none' }}
     >
       <div style={{ aspectRatio: '4/3', overflow: 'hidden', borderRadius: '24px 24px 0 0' }}>
-        <img
-          src={project.coverImage}
-          alt={project.title}
-          style={{
+        {project.coverImage ? (
+          <img
+            src={project.coverImage}
+            alt={project.title}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              display: 'block',
+              transition: 'transform 0.4s ease',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.06)')}
+            onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+          />
+        ) : (
+          <div style={{
             width: '100%',
             height: '100%',
-            objectFit: 'cover',
-            display: 'block',
-            transition: 'transform 0.4s ease',
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.transform = 'scale(1.06)')}
-          onMouseLeave={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-        />
+            background: 'var(--glass-bg)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <span style={{ color: 'var(--text-secondary)', fontSize: '2rem' }}>◈</span>
+          </div>
+        )}
       </div>
       <div style={{ padding: '22px 24px' }}>
         <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>

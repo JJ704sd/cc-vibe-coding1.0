@@ -1,11 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { usePublicData } from '@/services/storage/usePublicData';
+import { usePublicProjects } from '@/features/projects/api/usePublicProjects';
 import type { Project } from '@/types/domain';
 
 export function ProjectsPage() {
-  const reader = usePublicData();
-  const projects = reader.getPublishedProjects();
+  const { projects } = usePublicProjects();
   const [nightMode] = useState(() => {
     const h = new Date().getHours() + new Date().getMinutes() / 60;
     return h < 5.5 || h > 18.5;
@@ -69,7 +68,7 @@ export function ProjectsPage() {
   );
 }
 
-function ProjectCard({ project, nightMode }: { project: Project; nightMode: boolean }) {
+function ProjectCard({ project, nightMode }: { project: { id: string; title: string; slug: string; summary: string; coverImage: string | null; tags: string[] }; nightMode: boolean }) {
   const [hovered, setHovered] = useState(false);
 
   return (

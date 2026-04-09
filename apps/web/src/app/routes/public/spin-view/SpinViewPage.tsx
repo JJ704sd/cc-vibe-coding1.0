@@ -1,20 +1,23 @@
 import { useParams } from 'react-router-dom';
 import { SpinViewer } from '@/components/media/SpinViewer';
-import { usePublicData } from '@/services/storage/usePublicData';
+import { usePublicMediaSet } from '@/features/media/api/usePublicMediaSet';
 
 export function SpinViewPage() {
   const { mediaSetId } = useParams();
-  const reader = usePublicData();
-  const publishedProjects = reader.getPublishedProjects();
-  const publishedProjectIds = new Set(publishedProjects.map((project) => project.id));
-  const state = reader.getState();
-  const spinMediaSets = state.mediaSets.filter(
-    (item) => item.type === 'spin360' && publishedProjectIds.has(item.projectId),
-  );
-  const mediaSet = spinMediaSets.find((item) => item.id === mediaSetId) ?? spinMediaSets[0] ?? null;
-  const images = mediaSet ? reader.getMediaSetImages(mediaSet.id) : [];
+  const { data, loading, error } = usePublicMediaSet({
+    mediaSetId: mediaSetId ?? '',
+  });
 
-  if (!mediaSet) {
+  if (loading) {
+    return (
+      <div className="glass" style={{ padding: '64px', textAlign: 'center' }}>
+        <div className="empty-state-icon">◈</div>
+        <h2 className="section-title mt-4">加载中...</h2>
+      </div>
+    );
+  }
+
+  if (error || !data) {
     return (
       <div className="glass" style={{ padding: '64px', textAlign: 'center' }}>
         <div className="empty-state-icon">◈</div>
@@ -34,11 +37,11 @@ export function SpinViewPage() {
       <div className="glass animate-in" style={{ padding: '28px', marginBottom: '24px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
           <span className="badge badge-warm">spin360</span>
-          <h1 className="section-title" style={{ margin: 0 }}>{mediaSet.title}</h1>
+          <h1 className="section-title" style={{ margin: 0 }}>{data.title}</h1>
         </div>
-        <p className="muted">{mediaSet.description}</p>
+        <p className="muted">{data.description}</p>
       </div>
-      <SpinViewer images={images} />
+      <SpinViewer images={data.images} />
     </div>
   );
 }
