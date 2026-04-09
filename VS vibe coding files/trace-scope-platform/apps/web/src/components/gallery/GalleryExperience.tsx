@@ -157,7 +157,7 @@ const CARD_ASPECT_X = 4;
 const CARD_ASPECT_Y = 3;
 const CARD_HEIGHT = 200;
 const CARD_WIDTH = (CARD_HEIGHT * CARD_ASPECT_X) / CARD_ASPECT_Y;
-const LIFT_HEIGHT = 35;
+const LIFT_HEIGHT = 80;
 const FALLBACK_X = -600;
 const FALLBACK_SPACING = 250;
 
@@ -409,7 +409,7 @@ export function GalleryExperience({
     controls.enablePan = false;
     controls.minDistance = 400;
     controls.maxDistance = 2000;
-    controls.maxPolarAngle = Math.PI * 0.75;
+    controls.maxPolarAngle = Math.PI * 0.85;
     controls.target.set(0, 0, 0);
     controlsRef.current = controls;
 
@@ -436,7 +436,7 @@ export function GalleryExperience({
 
       const curvedMat = new THREE.MeshStandardMaterial({
         map: mapTexture,
-        side: THREE.DoubleSide,
+        side: THREE.FrontSide,
         transparent: true,
         roughness: 0.8,
         metalness: 0.0,
@@ -457,7 +457,7 @@ export function GalleryExperience({
       const mapTexture = new THREE.CanvasTexture(fallbackCanvas);
       const curvedMat = new THREE.MeshStandardMaterial({
         map: mapTexture,
-        side: THREE.DoubleSide,
+        side: THREE.FrontSide,
         transparent: true,
         roughness: 0.8,
         metalness: 0.0,
@@ -476,10 +476,14 @@ export function GalleryExperience({
     // Intro cinematic state (like yuyuzi gallery)
     let introActive = true;
     let introStartTime = clock.getElapsedTime();
-    const INTRO_DURATION = 3.0; // seconds
+    const INTRO_DURATION = 1.5; // seconds
     const introFrom = { theta: 2.0, phi: Math.PI / 2.15, zoom: 5000 };
-    const introTo = { theta: -0.4, phi: Math.PI / 2, zoom: 1200 };
+    // Natural overhead viewing angle
+    const introTo = { theta: Math.PI / 2, phi: Math.PI / 3, zoom: 1400 };
     const currentOrbit = { theta: introFrom.theta, phi: introFrom.phi, zoom: introFrom.zoom };
+    // Map center is at (x=0, z=0) after flat change
+    const MAP_CENTER_X = 0;
+    const MAP_CENTER_Z = 0;
 
     // Artwork pivot rotation (like yuyuzi artworkPivot) — already created in setup
 
@@ -513,14 +517,14 @@ export function GalleryExperience({
         camera.position.x = currentOrbit.zoom * Math.sin(currentOrbit.phi) * Math.cos(currentOrbit.theta);
         camera.position.y = currentOrbit.zoom * Math.cos(currentOrbit.phi);
         camera.position.z = currentOrbit.zoom * Math.sin(currentOrbit.phi) * Math.sin(currentOrbit.theta);
-        camera.lookAt(0, 0, 0);
+        camera.lookAt(MAP_CENTER_X, 0, MAP_CENTER_Z);
 
         // Rotate artwork pivot (like yuyuzi artworkPivot.rotation.y = time * 0.03)
         artworkPivot.rotation.y = time * 0.03;
 
         if (t >= 1.0) {
           introActive = false;
-          controls.target.set(0, 0, 0);
+          controls.target.set(MAP_CENTER_X, 0, MAP_CENTER_Z);
         }
       } else {
         controls.update();
