@@ -1,12 +1,26 @@
-import { useMemo } from 'react';
-import { buildMapRelationshipViewModel } from '@/features/map/model/mapViewModel';
-import { usePublicData } from '@/services/storage/usePublicData';
+import { useEffect, useMemo, useState } from 'react';
+import { buildMapRelationshipViewModel, type MapRelationshipViewModel, type BuildMapRelationshipViewModelInput } from '@/features/map/model/mapViewModel';
+import { fetchMapRelationshipData } from './fetchMapRelationshipData';
 
-export function useMapRelationshipData() {
-  const reader = usePublicData();
+const EMPTY_SOURCE: BuildMapRelationshipViewModelInput = {
+  projects: [],
+  locations: [],
+  mediaSets: [],
+  routes: [],
+};
 
-  return useMemo(() => {
-    const source = reader.getPublishedMapRelationshipSource();
-    return buildMapRelationshipViewModel(source);
-  }, [reader]);
+export function useMapRelationshipData(): MapRelationshipViewModel {
+  const [source, setSource] = useState<BuildMapRelationshipViewModelInput>(EMPTY_SOURCE);
+
+  useEffect(() => {
+    fetchMapRelationshipData()
+      .then((next) => {
+        setSource(next as BuildMapRelationshipViewModelInput);
+      })
+      .catch(() => {
+        // Keep empty source on error
+      });
+  }, []);
+
+  return useMemo(() => buildMapRelationshipViewModel(source), [source]);
 }

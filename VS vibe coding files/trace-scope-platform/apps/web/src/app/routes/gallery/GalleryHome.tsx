@@ -2,8 +2,13 @@ import { useState, useCallback, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { GalleryExperience } from '@/components/gallery/GalleryExperience';
 import { LoadingScreen } from '@/components/gallery/LoadingScreen';
-import { usePublicData } from '@/services/storage/usePublicData';
+import { httpJson } from '@/services/api/httpClient';
 import type { MediaImage } from '@/types/domain';
+
+interface PublicMediaImage extends MediaImage {
+  url: string;
+  mimeType?: string;
+}
 
 export function GalleryHome() {
   const [showLoader, setShowLoader] = useState(true);
@@ -14,9 +19,46 @@ export function GalleryHome() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [selectedImage, setSelectedImage] = useState<MediaImage | null>(null);
+  const [allImages, setAllImages] = useState<PublicMediaImage[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const reader = usePublicData();
-  const allImages = reader.getAllPublishedMediaImages();
+  // Fetch all published media images from all published projects
+  useEffect(() => {
+    async function fetchImages() {
+      try {
+        // Get all published projects
+        const { items: projects } = await httpJson<{ items: Array<{ id: string }> }>('/public/projects');
+
+        // Get map relationship to find all media sets and images
+        const mapData = await httpJson<{
+          mediaSets: Array<{ id: string; projectId: string }>;
+        }>('/public/map-relationship');
+
+        // Fetch media sets for each project to get images
+        const images: PublicMediaImage[] = [];
+        for (const project of projects) {
+          try {
+            const detail = await httpJson<{ mediaSets: Array<{ id: string; images: MediaImage[] }> }>(
+              `/public/projects/${project.id}`
+            );
+            for (const ms of detail.mediaSets) {
+              for (const img of ms.images) {
+                images.push(img as PublicMediaImage);
+              }
+            }
+          } catch {
+            // Skip projects that fail to load
+          }
+        }
+        setAllImages(images);
+      } catch {
+        // Silently fail - gallery will show empty
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchImages();
+  }, []);
 
   const filteredImages = allImages.filter((img) => {
     if (!searchQuery.trim()) return true;
@@ -301,4 +343,3 @@ export function GalleryHome() {
     </div>
   );
 }
-      

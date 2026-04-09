@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { LocationDetailPanel } from '@/components/project/LocationDetailPanel';
 import { MediaSetCard } from '@/components/project/MediaSetCard';
-import { usePublicData } from '@/services/storage/usePublicData';
+import { usePublicProjectDetail } from '@/features/projects/api/usePublicProjectDetail';
 
 export function ProjectDetailPage() {
   const [nightMode] = useState(() => {
@@ -10,17 +10,26 @@ export function ProjectDetailPage() {
     return h < 5.5 || h > 18.5;
   });
   const { projectId } = useParams();
-  const reader = usePublicData();
-  const state = reader.getState();
-  const publishedProjects = reader.getPublishedProjects();
-  const project = publishedProjects.find((item) => item.id === projectId) ?? publishedProjects[0];
+  const { data, loading, error } = usePublicProjectDetail({
+    projectIdOrSlug: projectId ?? '',
+  });
 
-  const projectLocations = useMemo(() => state.locations.filter((location) => location.projectId === project?.id), [state.locations, project?.id]);
-  const projectMediaSets = useMemo(() => state.mediaSets.filter((mediaSet) => mediaSet.projectId === project?.id), [state.mediaSets, project?.id]);
-  const [selectedLocationId, setSelectedLocationId] = useState(projectLocations[0]?.id ?? null);
-  const selectedLocation = projectLocations.find((location) => location.id === selectedLocationId) ?? null;
+  const project = data?.project;
+  const locations = data?.locations ?? [];
+  const mediaSets = data?.mediaSets ?? [];
+  const [selectedLocationId, setSelectedLocationId] = useState(locations[0]?.id ?? null);
+  const selectedLocation = locations.find((location) => location.id === selectedLocationId) ?? null;
 
-  if (!project) {
+  if (loading) {
+    return (
+      <div className="glass" style={{ padding: '48px', textAlign: 'center' }}>
+        <div className="empty-state-icon">◈</div>
+        <h2 className="section-title mt-4">加载中...</h2>
+      </div>
+    );
+  }
+
+  if (error || !project) {
     return (
       <div className="glass" style={{ padding: '48px', textAlign: 'center' }}>
         <div className="empty-state-icon">◈</div>
@@ -58,7 +67,7 @@ export function ProjectDetailPage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
         <LocationDetailPanel location={selectedLocation} />
-        {projectLocations.length > 0 && (
+        {locations.length > 0 && (
           <div className="glass" style={{
             padding: '20px',
             background: nightMode ? 'rgba(15, 22, 41, 0.7)' : 'rgba(255, 255, 255, 0.7)',
@@ -67,7 +76,7 @@ export function ProjectDetailPage() {
           }}>
             <h3 style={{ margin: '0 0 16px 0', fontSize: '1rem', color: nightMode ? '#E8ECEF' : 'var(--text)', fontFamily: "'Cormorant Garamond', serif" }}>时空轨迹</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {projectLocations.map((location, index) => (
+              {locations.map((location, index) => (
                 <div key={location.id} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{
                     width: '28px',
@@ -101,7 +110,7 @@ export function ProjectDetailPage() {
       <section>
         <h2 className="section-title" style={{ fontSize: '1.4rem', marginBottom: '16px', fontFamily: "'Cormorant Garamond', serif" }}>地点列表</h2>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-          {projectLocations.map((location) => (
+          {locations.map((location) => (
             <button
               key={location.id}
               className="glass"
@@ -131,7 +140,7 @@ export function ProjectDetailPage() {
       <section>
         <h2 className="section-title" style={{ fontSize: '1.4rem', marginBottom: '16px', fontFamily: "'Cormorant Garamond', serif" }}>媒体组列表</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px' }}>
-          {projectMediaSets.map((mediaSet) => (
+          {mediaSets.map((mediaSet) => (
             <MediaSetCard key={mediaSet.id} mediaSet={mediaSet} />
           ))}
         </div>
