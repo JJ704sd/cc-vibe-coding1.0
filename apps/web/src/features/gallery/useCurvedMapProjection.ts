@@ -22,7 +22,7 @@ export function useCurvedMapProjection({
     const anchored: AnchoredMediaPlacement[] = [];
     const fallback: FallbackMediaPlacement[] = [];
 
-    mediaImages.forEach((mediaImage) => {
+    mediaImages.forEach((mediaImage, index) => {
       if (
         mediaImage.longitude !== undefined &&
         mediaImage.latitude !== undefined
@@ -32,10 +32,10 @@ export function useCurvedMapProjection({
         return;
       }
 
-      fallback.push({
-        mediaImage,
-        fallbackIndex: fallback.length,
-      });
+      // Give fallback images scattered positions on the map
+      const u = ((index * 137.5) % 100) / 100; // Golden ratio scatter
+      const v = ((index * 97.3) % 100) / 100;
+      anchored.push({ mediaImage, u, v });
     });
 
     return { anchored, fallback };
