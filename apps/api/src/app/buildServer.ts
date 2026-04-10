@@ -7,13 +7,34 @@ import fastifyRateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
 import { loadConfig } from "./config.js";
 import { createLocalFileStorage } from "../infrastructure/storage/localFileStorage.js";
-import { registerProjectRoutes } from "../routes/projects.js";
-import { registerLocationRoutes } from "../routes/locations.js";
-import { registerMediaSetRoutes } from "../routes/mediaSets.js";
-import { registerMediaImageRoutes } from "../routes/mediaImages.js";
-import { registerRouteRoutes } from "../routes/routes.js";
-import { registerUploadRoutes } from "../routes/uploads.js";
-import { registerPublicRoutes } from "../routes/public.js";
+import { createProjectRepository } from "../modules/projects/repository.js";
+import { ProjectService } from "../modules/projects/service.js";
+import { registerProjectRoutes } from "../modules/projects/routes.js";
+
+import { createLocationRepository } from "../modules/locations/repository.js";
+import { LocationService } from "../modules/locations/service.js";
+import { registerLocationRoutes } from "../modules/locations/routes.js";
+
+import { createMediaSetRepository } from "../modules/media-sets/repository.js";
+import { MediaSetService } from "../modules/media-sets/service.js";
+import { registerMediaSetRoutes } from "../modules/media-sets/routes.js";
+
+import { createMediaImageRepository } from "../modules/media-images/repository.js";
+import { MediaImageService } from "../modules/media-images/service.js";
+import { registerMediaImageRoutes } from "../modules/media-images/routes.js";
+
+import { createRouteRepository } from "../modules/routes/repository.js";
+import { RouteService } from "../modules/routes/service.js";
+import { registerRouteRoutes } from "../modules/routes/routes.js";
+
+import { createUploadRepository } from "../modules/uploads/repository.js";
+import { UploadService } from "../modules/uploads/service.js";
+import { registerUploadRoutes } from "../modules/uploads/routes.js";
+
+import { createPublicRepository } from "../modules/public/repository.js";
+import { PublicService } from "../modules/public/service.js";
+import { registerPublicRoutes } from "../modules/public/routes.js";
+
 import { registerAuthRoutes } from "../modules/auth/routes.js";
 import { registerSystemRoutes } from "../modules/system/routes.js";
 import type { LocalFileStorage } from "../infrastructure/storage/localFileStorage.js";
@@ -105,13 +126,33 @@ export const buildServer = async (input?: {
   }
 
   // Register routes
-  registerProjectRoutes(server);
+  const projectRepo = createProjectRepository();
+  const projectService = new ProjectService(projectRepo);
+  registerProjectRoutes(server, projectService);
+
+  const locationRepo = createLocationRepository();
+  const locationService = new LocationService(locationRepo);
   registerLocationRoutes(server);
-  registerMediaSetRoutes(server);
-  registerMediaImageRoutes(server);
-  registerRouteRoutes(server);
-  registerUploadRoutes(server, storage, config);
-  registerPublicRoutes(server, storage);
+
+  const mediaSetRepo = createMediaSetRepository();
+  const mediaSetService = new MediaSetService(mediaSetRepo);
+  registerMediaSetRoutes(server, mediaSetService);
+
+  const mediaImageRepo = createMediaImageRepository();
+  const mediaImageService = new MediaImageService();
+  registerMediaImageRoutes(server, mediaImageService);
+
+  const routeRepo = createRouteRepository();
+  const routeService = new RouteService(routeRepo);
+  registerRouteRoutes(server, routeService);
+
+  const uploadRepo = createUploadRepository();
+  const uploadService = new UploadService(uploadRepo, storage);
+  registerUploadRoutes(server, uploadService);
+
+  const publicRepo = createPublicRepository();
+  const publicService = new PublicService(publicRepo, storage);
+  registerPublicRoutes(server, publicService);
 
   // Register auth routes if authService is provided
   if (input?.authService) {
