@@ -1,0 +1,9 @@
+.worktrees/
+apps/api/.env
+apps/api/.env.production
+apps/api/dist/
+apps/api/data/
+apps/api/node_modules/
+apps/web/dist/
+apps/web/node_modules/
+backups/
