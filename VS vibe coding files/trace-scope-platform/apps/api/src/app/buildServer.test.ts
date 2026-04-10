@@ -17,6 +17,48 @@ describe('buildServer', () => {
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ status: 'ok' });
   });
+
+  it('serves GET /health/live with systemHealthService', async () => {
+    const systemHealthService = {
+      live: () => ({ status: 'ok', checkedAt: '2026-04-09T12:00:00.000Z', uptimeSeconds: 42 }),
+      ready: vi.fn().mockResolvedValue({ status: 'ok', checkedAt: '2026-04-09T12:00:00.000Z', checks: { database: 'ok', storage: 'ok' } }),
+    };
+    const app = await buildServer({ systemHealthService });
+    apps.push(app);
+
+    const response = await app.inject({ method: 'GET', url: '/health/live' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ status: 'ok', checkedAt: '2026-04-09T12:00:00.000Z', uptimeSeconds: 42 });
+  });
+
+  it('serves GET /health/ready with systemHealthService and returns 200 when ok', async () => {
+    const systemHealthService = {
+      live: () => ({ status: 'ok', checkedAt: '2026-04-09T12:00:00.000Z', uptimeSeconds: 0 }),
+      ready: vi.fn().mockResolvedValue({ status: 'ok', checkedAt: '2026-04-09T12:00:00.000Z', checks: { database: 'ok', storage: 'ok' } }),
+    };
+    const app = await buildServer({ systemHealthService });
+    apps.push(app);
+
+    const response = await app.inject({ method: 'GET', url: '/health/ready' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ status: 'ok', checkedAt: '2026-04-09T12:00:00.000Z', checks: { database: 'ok', storage: 'ok' } });
+  });
+
+  it('serves GET /health/ready with systemHealthService and returns 503 when degraded', async () => {
+    const systemHealthService = {
+      live: () => ({ status: 'ok', checkedAt: '2026-04-09T12:00:00.000Z', uptimeSeconds: 0 }),
+      ready: vi.fn().mockResolvedValue({ status: 'degraded', checkedAt: '2026-04-09T12:00:00.000Z', checks: { database: 'error', storage: 'ok' } }),
+    };
+    const app = await buildServer({ systemHealthService });
+    apps.push(app);
+
+    const response = await app.inject({ method: 'GET', url: '/health/ready' });
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ status: 'degraded', checkedAt: '2026-04-09T12:00:00.000Z', checks: { database: 'error', storage: 'ok' } });
+  });
 });
 
 describe('buildServer hardening', () => {

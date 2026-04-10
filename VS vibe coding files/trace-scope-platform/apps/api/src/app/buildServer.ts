@@ -15,6 +15,7 @@ import { registerRouteRoutes } from "../routes/routes.js";
 import { registerUploadRoutes } from "../routes/uploads.js";
 import { registerPublicRoutes } from "../routes/public.js";
 import { registerAuthRoutes } from "../modules/auth/routes.js";
+import { registerSystemRoutes } from "../modules/system/routes.js";
 import type { LocalFileStorage } from "../infrastructure/storage/localFileStorage.js";
 import { AppError } from "./errors.js";
 import { mkdir } from "node:fs/promises";
@@ -33,7 +34,12 @@ export const buildServer = async (input?: {
   corsOrigins?: string[];
   rateLimitMax?: number;
   rateLimitWindowMs?: number;
-}): Promise<FastifyInstance> => {
+  systemHealthService?: {
+    live(): { status: string; checkedAt: string; uptimeSeconds: number };
+    ready(): Promise<{ status: string; checkedAt: string; checks: { database: string; storage: string } }>;
+  };
+}):
+ Promise<FastifyInstance> => {
   const server = Fastify({
     trustProxy: input?.trustProxy,
     bodyLimit: input?.bodyLimitBytes,
@@ -92,6 +98,11 @@ export const buildServer = async (input?: {
 
   // Health check
   server.get("/health", async () => ({ status: "ok" }));
+
+  // System health routes
+  if (input?.systemHealthService) {
+    server.register(registerSystemRoutes, { systemHealthService: input.systemHealthService });
+  }
 
   // Register routes
   registerProjectRoutes(server);
