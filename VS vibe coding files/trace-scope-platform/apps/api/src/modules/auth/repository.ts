@@ -16,10 +16,9 @@ type AdminSessionRow = {
 };
 
 export function createAuthRepository() {
-  const pool = getPool();
-
   return {
     async findUserByUsername(username: string) {
+      const pool = getPool();
       const rows = await pool.query<AdminUserRow>(
         'SELECT id, username, password_hash, role, is_active FROM admin_user WHERE username = ? LIMIT 1',
         [username],
@@ -40,6 +39,7 @@ export function createAuthRepository() {
     },
 
     async insertSession(input: { id: string; userId: string; sessionTokenHash: string; expiresAt: Date; ipAddress: string | null; userAgent: string | null }) {
+      const pool = getPool();
       const now = new Date();
       await pool.execute(
         'INSERT INTO admin_session (id, user_id, session_token_hash, expires_at, created_at, last_seen_at, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
@@ -48,6 +48,7 @@ export function createAuthRepository() {
     },
 
     async findSessionByHash(sessionTokenHash: string) {
+      const pool = getPool();
       const rows = await pool.query<AdminSessionRow>(
         `SELECT s.user_id, u.username, u.role, s.expires_at
          FROM admin_session s
@@ -71,6 +72,7 @@ export function createAuthRepository() {
     },
 
     async deleteSessionByHash(sessionTokenHash: string) {
+      const pool = getPool();
       await pool.execute(
         'DELETE FROM admin_session WHERE session_token_hash = ?',
         [sessionTokenHash],
