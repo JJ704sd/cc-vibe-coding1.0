@@ -1,6 +1,9 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import fastifyCookie from "@fastify/cookie";
+import fastifyCors from "@fastify/cors";
+import fastifyHelmet from "@fastify/helmet";
 import fastifyMultipart from "@fastify/multipart";
+import fastifyRateLimit from "@fastify/rate-limit";
 import fastifyStatic from "@fastify/static";
 import { loadConfig } from "./config.js";
 import { createLocalFileStorage } from "../infrastructure/storage/localFileStorage.js";
@@ -17,15 +20,43 @@ import { AppError } from "./errors.js";
 import { mkdir } from "node:fs/promises";
 import { resolve, isAbsolute } from "node:path";
 
-export const buildServer = async (params?: {
+export const buildServer = async (input?: {
   authService?: {
     login(data: { username: string; password: string; ipAddress: string | null; userAgent: string | null }): Promise<{ sessionToken: string; user: { id: string; username: string; role: 'admin' } }>;
     getSession(data: { sessionToken: string }): Promise<{ user: { id: string; username: string; role: 'admin' } } | null>;
     logout(data: { sessionToken: string }): Promise<void>;
   };
   cookieSecure?: boolean;
+  logLevel?: string;
+  bodyLimitBytes?: number;
+  trustProxy?: boolean;
+  corsOrigins?: string[];
+  rateLimitMax?: number;
+  rateLimitWindowMs?: number;
 }): Promise<FastifyInstance> => {
-  const server = Fastify();
+  const server = Fastify({
+    trustProxy: input?.trustProxy,
+    bodyLimit: input?.bodyLimitBytes,
+    logger: input?.logLevel ? { level: input.logLevel } : false,
+  });
+
+  // Register hardening plugins
+  await server.register(fastifyHelmet, { global: true, contentSecurityPolicy: false });
+
+  if (input?.corsOrigins?.length) {
+    await server.register(fastifyCors, {
+      origin: input.corsOrigins,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      credentials: true,
+    });
+  }
+
+  if (input?.rateLimitMax != null && input?.rateLimitWindowMs != null) {
+    await server.register(fastifyRateLimit, {
+      max: input.rateLimitMax,
+      timeWindow: input.rateLimitWindowMs,
+    });
+  }
 
   // Register cookie plugin
   await server.register(fastifyCookie);
@@ -72,10 +103,13 @@ export const buildServer = async (params?: {
   registerPublicRoutes(server, storage);
 
   // Register auth routes if authService is provided
-  if (params?.authService) {
-    await registerAuthRoutes(server, {
-      authService: params.authService,
-      cookieSecure: params.cookieSecure ?? config.cookieSecure,
+  if (input?.authService) {
+    const authService = input.authService;
+    server.register(async (authApp) => {
+      await registerAuthRoutes(authApp, {
+        authService,
+        cookieSecure: input.cookieSecure ?? config.cookieSecure,
+      });
     });
   }
 
@@ -88,6 +122,12 @@ export const buildServer = async (params?: {
     // Fastify validation errors
     if (typeof error === "object" && error !== null && "validation" in error) {
       reply.status(400).send({ error: String((error as { message?: unknown }).message ?? "Validation error") });
+      return;
+    }
+    // Errors with a statusCode property (e.g. rate limit errors)
+    if (typeof error === "object" && error !== null && "statusCode" in error) {
+      const err = error as { statusCode?: number; message?: string };
+      reply.status(err.statusCode ?? 500).send({ error: err.message ?? "Request error" });
       return;
     }
     request.log.error(error);

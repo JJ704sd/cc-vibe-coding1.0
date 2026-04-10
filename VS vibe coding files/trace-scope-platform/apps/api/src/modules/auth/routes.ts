@@ -28,12 +28,14 @@ export async function registerAuthRoutes(
       path: '/',
       secure: input.cookieSecure,
     });
+    reply.header('Cache-Control', 'no-store');
 
     return { user: result.user };
   });
 
-  app.get('/api/admin/session', async (request) => {
+  app.get('/api/admin/session', async (request, reply) => {
     const token = request.cookies[SESSION_COOKIE_NAME];
+    reply.header('Cache-Control', 'no-store');
     return { user: token ? (await input.authService.getSession({ sessionToken: token }))?.user ?? null : null };
   });
 
@@ -43,6 +45,7 @@ export async function registerAuthRoutes(
       await input.authService.logout({ sessionToken: token });
     }
     reply.clearCookie(SESSION_COOKIE_NAME, { path: '/', httpOnly: true, sameSite: 'lax', secure: input.cookieSecure });
+    reply.header('Cache-Control', 'no-store');
     return { ok: true };
   });
 }
