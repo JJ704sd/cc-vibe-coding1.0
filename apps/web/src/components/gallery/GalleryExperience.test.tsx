@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { GalleryExperience } from './GalleryExperience';
 import type { MediaImage } from '@/types/domain';
 
@@ -85,12 +85,16 @@ vi.mock('three', () => {
       };
       this.computeVertexNormals = vi.fn();
     },
-    MeshStandardMaterial: function MockMeshStandardMaterial(this: { dispose: ReturnType<typeof vi.fn>; opacity: number }) { this.dispose = vi.fn(); this.opacity = 1; },
+    MeshStandardMaterial: function MockMeshStandardMaterial(this: { dispose: ReturnType<typeof vi.fn>; opacity: number; clone: ReturnType<typeof vi.fn> }) {
+      this.dispose = vi.fn();
+      this.opacity = 1;
+      this.clone = vi.fn(() => new (MockMeshStandardMaterial as any)());
+    },
     ShaderMaterial: function MockShaderMaterial() {},
     SphereGeometry: function MockSphereGeometry(this: { dispose: ReturnType<typeof vi.fn> }) { this.dispose = vi.fn(); },
-    Mesh: function MockMesh(this: { position: { copy: ReturnType<typeof vi.fn>; set: ReturnType<typeof vi.fn> }; rotation: { y: number }; userData: object; add: ReturnType<typeof vi.fn> }) {
+    Mesh: function MockMesh(this: { position: { copy: ReturnType<typeof vi.fn>; set: ReturnType<typeof vi.fn> }; rotation: { x: number; y: number; z: number }; userData: object; add: ReturnType<typeof vi.fn> }) {
       this.position = { copy: vi.fn(), set: vi.fn() };
-      this.rotation = { y: 0 };
+      this.rotation = { x: 0, y: 0, z: 0 };
       this.userData = {};
       this.add = vi.fn();
     },
@@ -121,6 +125,7 @@ vi.mock('three', () => {
 vi.mock('three/examples/jsm/controls/OrbitControls.js', () => ({
   OrbitControls: function MockOrbitControls() {
     return {
+      enabled: true,
       enableDamping: true,
       dampingFactor: 0.04,
       enablePan: false,
@@ -133,6 +138,24 @@ vi.mock('three/examples/jsm/controls/OrbitControls.js', () => ({
     };
   },
 }));
+
+Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+  value: vi.fn(() => ({
+    createLinearGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
+    createRadialGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
+    fillRect: vi.fn(),
+    beginPath: vi.fn(),
+    moveTo: vi.fn(),
+    lineTo: vi.fn(),
+    closePath: vi.fn(),
+    fill: vi.fn(),
+    stroke: vi.fn(),
+    ellipse: vi.fn(),
+    fillStyle: '',
+    strokeStyle: '',
+    lineWidth: 1,
+  })),
+});
 
 describe('GalleryExperience', () => {
   const createMockMediaImages = (): MediaImage[] => [
@@ -232,5 +255,24 @@ describe('GalleryExperience', () => {
     );
 
     expect(onImageSelect).not.toHaveBeenCalled();
+  });
+
+  it('keeps the map module collapsed until focus is requested', () => {
+    render(
+      <GalleryExperience
+        mediaImages={createMockMediaImages()}
+        nightMode={false}
+        onImageSelect={vi.fn()}
+      />
+    );
+
+    const mapStage = screen.getByTestId('gallery-map-stage');
+    expect(mapStage.getAttribute('data-focus-state')).toBe('idle');
+
+    fireEvent.click(screen.getByRole('button', { name: '进入地图聚焦' }));
+    expect(mapStage.getAttribute('data-focus-state')).toBe('focused');
+
+    fireEvent.click(screen.getByRole('button', { name: '收起地图' }));
+    expect(mapStage.getAttribute('data-focus-state')).toBe('idle');
   });
 });
