@@ -110,6 +110,8 @@ export function createProjectRepository() {
       },
     ): Promise<Project | null> {
       const pool = getPool();
+      // Use empty string to allow clearing cover_upload_file_id
+      const newCoverId = (input.coverUploadFileId === '' ? null : (input.coverUploadFileId ?? null));
       await pool.execute(
         `UPDATE project SET
           title = COALESCE(?, title),
@@ -117,7 +119,7 @@ export function createProjectRepository() {
           summary = COALESCE(?, summary),
           description = COALESCE(?, description),
           status = COALESCE(?, status),
-          cover_upload_file_id = COALESCE(?, cover_upload_file_id),
+          cover_upload_file_id = ?,
           updated_at = ?
          WHERE id = ?`,
         [
@@ -126,7 +128,7 @@ export function createProjectRepository() {
           input.summary ?? null,
           input.description ?? null,
           input.status ?? null,
-          input.coverUploadFileId ?? null,
+          newCoverId,
           input.now,
           id,
         ],
