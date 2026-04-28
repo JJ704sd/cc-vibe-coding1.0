@@ -52,6 +52,8 @@ export function createMediaSetRepository() {
 
       if (existing) {
         // UPDATE
+        // Use empty string to allow clearing cover_upload_file_id
+        const newCoverId = (input.coverUploadFileId === '' ? null : (input.coverUploadFileId ?? null));
         await runQuery(
           pool,
           `UPDATE media_set SET
@@ -59,7 +61,7 @@ export function createMediaSetRepository() {
             type = COALESCE(?, type),
             title = COALESCE(?, title),
             description = COALESCE(?, description),
-            cover_upload_file_id = COALESCE(?, cover_upload_file_id),
+            cover_upload_file_id = ?,
             is_featured = COALESCE(?, is_featured),
             updated_at = ?
            WHERE id = ?`,
@@ -68,7 +70,7 @@ export function createMediaSetRepository() {
             input.type ?? null,
             input.title ?? null,
             input.description ?? null,
-            input.coverUploadFileId ?? null,
+            newCoverId,
             input.isFeatured !== undefined ? (input.isFeatured ? 1 : 0) : null,
             now,
             id,
