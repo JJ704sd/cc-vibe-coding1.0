@@ -9,13 +9,13 @@ export function registerUploadRoutes(
   },
 ) {
   // GET /uploads
-  server.get('/uploads', async () => {
+  server.get('/api/uploads', async () => {
     // Return empty list for now - gallery loads via publicDataReader
     return [];
   });
 
   // GET /uploads/:id
-  server.get<{ Params: { id: string } }>('/uploads/:id', async (request, reply) => {
+  server.get<{ Params: { id: string } }>('/api/uploads/:id', async (request, reply) => {
     const file = await service.getUpload(request.params.id);
     if (!file) {
       reply.status(404);
@@ -25,14 +25,14 @@ export function registerUploadRoutes(
   });
 
   // POST /uploads
-  server.post('/uploads', async (request, reply) => {
+  server.post('/api/uploads', async (request, reply) => {
     const result = await service.createUpload(request);
     reply.status(201);
     return result;
   });
 
   // DELETE /uploads/:id
-  server.delete<{ Params: { id: string } }>('/uploads/:id', async (request, reply) => {
+  server.delete<{ Params: { id: string } }>('/api/uploads/:id', async (request, reply) => {
     const file = await service.getUpload(request.params.id);
     if (!file) {
       reply.status(404);

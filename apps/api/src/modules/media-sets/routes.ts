@@ -2,14 +2,12 @@ import type { FastifyInstance } from 'fastify';
 import type { MediaSetService } from './service.js';
 
 export function registerMediaSetRoutes(server: FastifyInstance, service: MediaSetService) {
-  // GET /media-sets
-  server.get('/media-sets', async (request) => {
+  server.get('/api/media-sets', async (request) => {
     const { project_id, location_id } = request.query as { project_id?: string; location_id?: string };
     return service.getAll({ projectId: project_id, locationId: location_id });
   });
 
-  // GET /media-sets/:id
-  server.get<{ Params: { id: string } }>('/media-sets/:id', async (request, reply) => {
+  server.get<{ Params: { id: string } }>('/api/media-sets/:id', async (request, reply) => {
     const mediaSet = await service.getById(request.params.id);
     if (!mediaSet) {
       reply.status(404);
@@ -18,7 +16,6 @@ export function registerMediaSetRoutes(server: FastifyInstance, service: MediaSe
     return mediaSet;
   });
 
-  // POST /media-sets
   server.post<{
     Body: {
       project_id: string;
@@ -29,7 +26,7 @@ export function registerMediaSetRoutes(server: FastifyInstance, service: MediaSe
       cover_upload_file_id?: string;
       is_featured?: boolean;
     };
-  }>('/media-sets', async (request, reply) => {
+  }>('/api/media-sets', async (request, reply) => {
     const result = await service.create({
       projectId: request.body.project_id,
       locationId: request.body.location_id,
@@ -43,7 +40,6 @@ export function registerMediaSetRoutes(server: FastifyInstance, service: MediaSe
     return result;
   });
 
-  // PUT /media-sets/:id
   server.put<{
     Params: { id: string };
     Body: {
@@ -54,7 +50,7 @@ export function registerMediaSetRoutes(server: FastifyInstance, service: MediaSe
       cover_upload_file_id?: string;
       is_featured?: boolean;
     };
-  }>('/media-sets/:id', async (request, reply) => {
+  }>('/api/media-sets/:id', async (request, reply) => {
     try {
       const result = await service.update(request.params.id, {
         locationId: request.body.location_id,
@@ -74,8 +70,7 @@ export function registerMediaSetRoutes(server: FastifyInstance, service: MediaSe
     }
   });
 
-  // DELETE /media-sets/:id
-  server.delete<{ Params: { id: string } }>('/media-sets/:id', async (request, reply) => {
+  server.delete<{ Params: { id: string } }>('/api/media-sets/:id', async (request, reply) => {
     try {
       await service.delete(request.params.id);
       await reply.status(204);

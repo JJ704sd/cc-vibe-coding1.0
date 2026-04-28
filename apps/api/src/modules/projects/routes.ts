@@ -6,8 +6,8 @@ export function registerProjectRoutes(
   server: FastifyInstance,
   service: ProjectService,
 ) {
-  // GET /projects
-  server.get('/projects', async (request, reply) => {
+  // GET /api/projects
+  server.get('/api/projects', async (request, reply) => {
     const { project_id, status } = request.query as { project_id?: string; status?: string };
 
     const projects = await service.findAll({
@@ -18,8 +18,7 @@ export function registerProjectRoutes(
     return projects;
   });
 
-  // GET /projects/:id
-  server.get<{ Params: { id: string } }>('/projects/:id', async (request, reply) => {
+  server.get<{ Params: { id: string } }>('/api/projects/:id', async (request, reply) => {
     const project = await service.findById(request.params.id);
     if (!project) {
       reply.status(404);
@@ -28,15 +27,13 @@ export function registerProjectRoutes(
     return project;
   });
 
-  // POST /projects
-  server.post<{ Body: CreateProjectInput }>('/projects', async (request, reply) => {
+  server.post<{ Body: CreateProjectInput }>('/api/projects', async (request, reply) => {
     const project = await service.create(request.body);
     reply.status(201);
     return project;
   });
 
-  // PUT /projects/:id
-  server.put<{ Params: { id: string }; Body: UpdateProjectInput }>('/projects/:id', async (request, reply) => {
+  server.put<{ Params: { id: string }; Body: UpdateProjectInput }>('/api/projects/:id', async (request, reply) => {
     const project = await service.update(request.params.id, request.body);
     if (!project) {
       reply.status(404);
@@ -45,8 +42,7 @@ export function registerProjectRoutes(
     return project;
   });
 
-  // DELETE /projects/:id
-  server.delete<{ Params: { id: string } }>('/projects/:id', async (request, reply) => {
+  server.delete<{ Params: { id: string } }>('/api/projects/:id', async (request, reply) => {
     const deleted = await service.delete(request.params.id);
     if (!deleted) {
       reply.status(404);

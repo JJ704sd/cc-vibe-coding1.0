@@ -80,6 +80,10 @@ export class UploadService {
   }
 
   async deleteUpload(id: string): Promise<void> {
+    const file = await this.repository.findById(id);
+    if (file) {
+      await this.storage.deleteFile(file.storage_key);
+    }
     await this.repository.deleteUploadFile(id);
   }
 }

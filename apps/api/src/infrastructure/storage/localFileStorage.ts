@@ -22,6 +22,7 @@ export type SavedFile = {
 export type LocalFileStorage = {
   saveBuffer: (input: SaveBufferInput) => Promise<SavedFile>;
   getFile: (storageKey: string) => Promise<{ stream: Readable; mimeType: string } | null>;
+  deleteFile: (storageKey: string) => Promise<boolean>;
 };
 
 export type CreateLocalFileStorageParams = {
@@ -85,6 +86,17 @@ export const createLocalFileStorage = ({
         return { stream, mimeType };
       } catch {
         return null;
+      }
+    },
+
+    deleteFile: async (storageKey: string) => {
+      const absolutePath = join(rootDir, storageKey);
+      try {
+        const { unlink } = await import('node:fs/promises');
+        await unlink(absolutePath);
+        return true;
+      } catch {
+        return false;
       }
     }
   };
