@@ -11,10 +11,10 @@ const MapPage = lazy(() => import('@/app/routes/public/map/MapPage').then((modul
 const SpinViewPage = lazy(() => import('@/app/routes/public/spin-view/SpinViewPage').then((module) => ({ default: module.SpinViewPage })));
 const GalleryViewPage = lazy(() => import('@/app/routes/public/gallery-view/GalleryViewPage').then((module) => ({ default: module.GalleryViewPage })));
 const AdminDashboardPage = lazy(() => import('@/app/routes/admin/dashboard/AdminDashboardPage').then((module) => ({ default: module.AdminDashboardPage })));
-const AdminProjectsPage = lazy(() => import('@/app/routes/admin/projects/AdminProjectsPage').then((module) => ({ default: module.AdminProjectsPage })));
-const AdminLocationsPage = lazy(() => import('@/app/routes/admin/locations/AdminLocationsPage').then((module) => ({ default: module.AdminLocationsPage })));
-const AdminMediaPage = lazy(() => import('@/app/routes/admin/media/AdminMediaPage').then((module) => ({ default: module.AdminMediaPage })));
-const AdminRoutesPage = lazy(() => import('@/app/routes/admin/routes/AdminRoutesPage').then((module) => ({ default: module.AdminRoutesPage })));
+const AdminProjectsPage = lazy(() => import('@/app/routes/admin/projects/AdminProjectsPage').then((module) => ({ default: module.default })));
+const AdminLocationsPage = lazy(() => import('@/app/routes/admin/locations/AdminLocationsPage').then((module) => ({ default: module.default })));
+const AdminMediaPage = lazy(() => import('@/app/routes/admin/media/AdminMediaPage').then((module) => ({ default: module.default })));
+const AdminRoutesPage = lazy(() => import('@/app/routes/admin/routes/AdminRoutesPage').then((module) => ({ default: module.default })));
 const AdminLoginPage = lazy(() => import('@/app/routes/admin/login/AdminLoginPage').then((module) => ({ default: module.AdminLoginPage })));
 
 function RouteFallback() {

@@ -9,7 +9,7 @@ const CARD_SIZE = 280;
 const MAX_ROWS = 4;
 const VERTICAL_SPACING = 550;
 const INNER_RADIUS = 1000;
-const RING_SPACING = 800;
+const RING_SPACING = 1400;
 const CARDS_PER_RING = 4;
 
 interface GallerySceneProps {
@@ -404,7 +404,7 @@ export function GalleryScene({
         initialPos,
         initialRot,
         phase: Math.random() * Math.PI * 2,
-        driftAmp: 8 + Math.random() * 12,
+        driftAmp: 3 + Math.random() * 5,
         imgMat,
         backMat,
       });

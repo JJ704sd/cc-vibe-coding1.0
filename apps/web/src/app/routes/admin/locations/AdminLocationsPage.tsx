@@ -19,6 +19,7 @@ import { locationsApi, projectsApi, type Location, type Project } from '@/servic
  * - 地址自动地理编码
  * - 地点关联多个媒体组
  */
+export default function AdminLocationsPage() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);

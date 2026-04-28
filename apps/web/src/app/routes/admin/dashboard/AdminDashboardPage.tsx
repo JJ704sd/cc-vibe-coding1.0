@@ -1,11 +1,26 @@
-import { locations, mediaSets, projects, routes } from '@/services/api/mock-data';
+import { useState, useEffect } from 'react';
+import { projectsApi, locationsApi, mediaSetsApi, routesApi } from '@/services/api/adminApi';
 
 export function AdminDashboardPage() {
-  const stats = [
-    { label: '项目数量', value: projects.length, icon: '📁' },
-    { label: '地点数量', value: locations.length, icon: '📍' },
-    { label: '媒体组数量', value: mediaSets.length, icon: '🖼' },
-    { label: '轨迹数量', value: routes.length, icon: '🛤' }
+  const [stats, setStats] = useState({ projects: 0, locations: 0, mediaSets: 0, routes: 0 });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      projectsApi.list(),
+      locationsApi.list(),
+      mediaSetsApi.list(),
+      routesApi.list(),
+    ]).then(([p, l, m, r]) => {
+      setStats({ projects: p.length, locations: l.length, mediaSets: m.length, routes: r.length });
+    }).finally(() => setLoading(false));
+  }, []);
+
+  const items = [
+    { label: '项目数量', value: stats.projects, icon: '📁' },
+    { label: '地点数量', value: stats.locations, icon: '📍' },
+    { label: '媒体组数量', value: stats.mediaSets, icon: '🖼' },
+    { label: '轨迹数量', value: stats.routes, icon: '🛤' },
   ];
 
   return (
@@ -16,13 +31,19 @@ export function AdminDashboardPage() {
       </div>
 
       <div className="stats-grid mt-4">
-        {stats.map((item) => (
-          <div key={item.label} className="stat-card">
-            <div style={{ fontSize: '2rem', marginBottom: '8px' }}>{item.icon}</div>
-            <div className="stat-value">{item.value}</div>
-            <div className="stat-label">{item.label}</div>
+        {loading ? (
+          <div className="stat-card">
+            <div className="muted">加载中...</div>
           </div>
-        ))}
+        ) : (
+          items.map(item => (
+            <div key={item.label} className="stat-card">
+              <div style={{ fontSize: '2rem', marginBottom: '8px' }}>{item.icon}</div>
+              <div className="stat-value">{item.value}</div>
+              <div className="stat-label">{item.label}</div>
+            </div>
+          ))
+        )}
       </div>
 
       <div className="panel mt-4" style={{ padding: '24px' }}>

@@ -2,14 +2,13 @@ import { createContext, useContext, useState, useCallback, type ReactNode } from
 
 interface AuthContextValue {
   isAuthenticated: boolean;
-  login: (username: string, password: string) => boolean;
-  logout: () => void;
+  login: (username: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const ADMIN_USERNAME = 'admin';
-const ADMIN_PASSWORD = 'trace-scope-2026';
+const API_BASE = '';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -17,16 +16,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return sessionStorage.getItem('trace-scope-auth') === 'true';
   });
 
-  const login = useCallback((username: string, password: string): boolean => {
-    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-      sessionStorage.setItem('trace-scope-auth', 'true');
-      setIsAuthenticated(true);
-      return true;
+  const login = useCallback(async (username: string, password: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username, password }),
+      });
+      if (res.ok) {
+        sessionStorage.setItem('trace-scope-auth', 'true');
+        setIsAuthenticated(true);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
     }
-    return false;
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      await fetch(`${API_BASE}/api/admin/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch {
+      // ignore
+    }
     sessionStorage.removeItem('trace-scope-auth');
     setIsAuthenticated(false);
   }, []);

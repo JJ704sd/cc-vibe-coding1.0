@@ -24,6 +24,7 @@ import { mediaSetsApi, mediaImagesApi, projectsApi, locationsApi, type MediaSet,
  * - 批量上传
  * - 裁剪/压缩预处理
  */
+export default function AdminMediaPage() {
   const [mediaSets, setMediaSets] = useState<MediaSet[]>([]);
   const [mediaImages, setMediaImages] = useState<MediaImage[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);

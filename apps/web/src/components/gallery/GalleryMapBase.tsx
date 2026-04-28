@@ -6,6 +6,9 @@ import {
   MAP_ENV_KEYS,
 } from '@/lib/constants/map';
 
+// China center — shows full country at zoom 4
+const CHINA_CENTER: [number, number] = [104.1954, 35.8617];
+
 export function GalleryMapBase() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import('maplibre-gl').Map | null>(null);
@@ -26,23 +29,29 @@ export function GalleryMapBase() {
       const map = new maplibre.Map({
         container: containerRef.current,
         style: buildTiandituRasterStyle(token),
-        center: [...MAP_CAMERA_DEFAULTS.center],
-        zoom: MAP_CAMERA_DEFAULTS.zoom,
-        pitch: MAP_CAMERA_DEFAULTS.pitch,
+        center: CHINA_CENTER,
+        zoom: 4,          // 显示全中国
+        minZoom: 3,       // 允许缩小看更大范围
+        maxZoom: 10,
+        pitch: 0,          // 俯视全图，不用倾斜
         attributionControl: false,
-        interactive: false,  // 静止地图
       });
 
       mapRef.current = map;
 
-      // 禁用所有交互
-      map.boxZoom.disable();
-      map.scrollZoom.disable();
-      map.dragPan.disable();
-      map.dragRotate.disable();
-      map.keyboard.disable();
-      map.doubleClickZoom.disable();
-      map.touchZoomRotate.disable();
+      map.addControl(
+        new maplibre.NavigationControl({
+          showCompass: true,
+          visualizePitch: true,
+        }),
+        'top-right',
+      );
+
+      // 显示缩放级别提示
+      map.addControl(
+        new maplibre.ScaleControl({ maxWidth: 120, unit: 'metric' }),
+        'bottom-left',
+      );
     }
 
     void init();

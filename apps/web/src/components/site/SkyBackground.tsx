@@ -250,7 +250,9 @@ export function createSkyBackground(): SkyBackgroundResult {
           sky = mix(sky, cloudColor, cloudAlpha);
         }
 
-        gl_FragColor = vec4(sky, 1.0);
+        // Below horizon (y <= 0): transparent so the map beneath shows through
+        float skyAlpha = smoothstep(0.0, 0.08, y);
+        gl_FragColor = vec4(sky, skyAlpha);
       }
     `,
     side: THREE.BackSide,

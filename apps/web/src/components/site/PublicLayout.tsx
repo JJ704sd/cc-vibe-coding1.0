@@ -38,7 +38,8 @@ export function PublicLayout() {
           transition: 'background 2s ease',
         }}
       >
-        {/* Brand */}
+        {/* Brand — wrapped in a centered flex so title+subtitle stay vertically centered */}
+        <div style={{ display: 'flex', alignItems: 'center' }}>
         <Link
           to="/"
           style={{
@@ -74,6 +75,7 @@ export function PublicLayout() {
             双核心空间叙事平台
           </span>
         </Link>
+        </div>
 
         {/* Nav */}
         <nav style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>

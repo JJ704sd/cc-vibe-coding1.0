@@ -17,6 +17,7 @@ import { projectsApi, type Project } from '@/services/api/adminApi';
  * - coverImage 上传
  * - 富文本编辑器替代 textarea
  */
+export default function AdminProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

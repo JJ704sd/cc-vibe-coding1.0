@@ -37,6 +37,6 @@ describe('useProjectedMapGraph', () => {
     );
 
     // After initial render with empty viewModel, should still register listeners
-    expect(mockMap.on).toHaveBeenCalled();
+    expect(mockMap!.on).toHaveBeenCalled();
   });
 });

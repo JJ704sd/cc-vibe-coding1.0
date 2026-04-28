@@ -19,6 +19,7 @@ import { routesApi, projectsApi, type Route, type Project } from '@/services/api
  * - 地图可视化选点
  * - 轨迹预览
  */
+export default function AdminRoutesPage() {
   const [routes, setRoutes] = useState<Route[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);

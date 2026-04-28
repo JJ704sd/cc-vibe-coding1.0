@@ -308,6 +308,70 @@ button, input, textarea, select {
   margin: 0 auto;
 }
 
+/* === Panel (Admin dark card) === */
+.panel {
+  background: rgba(18, 18, 28, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+}
+
+/* === Admin Layout === */
+.admin-layout {
+  background: #0f0f1a;
+  min-height: 100vh;
+  color: rgba(220, 220, 240, 0.9);
+}
+
+.admin-layout .page-shell {
+  padding-top: 24px;
+}
+
+/* Admin form elements */
+.admin-layout input,
+.admin-layout textarea,
+.admin-layout select {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: rgba(220, 220, 240, 0.9);
+  padding: 8px 12px;
+  width: 100%;
+  font-size: 0.875rem;
+  transition: border-color 0.2s;
+}
+
+.admin-layout input:focus,
+.admin-layout textarea:focus,
+.admin-layout select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.admin-layout input::placeholder,
+.admin-layout textarea::placeholder {
+  color: rgba(200, 200, 220, 0.35);
+}
+
+.admin-layout button {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 20px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+.admin-layout button:hover {
+  opacity: 0.85;
+}
+
+.admin-layout button:active {
+  opacity: 0.7;
+}
+
 /* === Glass Card Base === */
 .glass {
   background: var(--glass-bg);
@@ -834,4 +898,48 @@ label {
   margin-top: 16px;
   color: rgba(230,230,240,0.9);
   font-family: 'Work Sans', sans-serif;
+}
+
+/* === Gallery Map Loading Indicator === */
+@keyframes gallery-dot-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+.gallery-map-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(200, 200, 220, 0.45);
+  font-size: 0.65rem;
+  font-family: 'Work Sans', sans-serif;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.gallery-map-loading-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(200, 200, 220, 0.5);
+  animation: gallery-dot-pulse 1.6s ease-in-out infinite;
+}
+
+/* Ensure Three.js canvas sits above MapLibre canvas */
+.gallery-experience-root {
+  isolation: isolate;
+}
+
+.gallery-three-layer canvas {
+  position: absolute !important;
+  z-index: 1 !important;
+}
+
+/* MapLibre canvas: screen blend so transparent pixels reveal the sky below */
+.gallery-map-layer canvas,
+.gallery-map-layer .maplibregl-canvas {
+  position: absolute !important;
+  z-index: 0 !important;
+  mix-blend-mode: screen;
 }
