@@ -7,10 +7,12 @@ export function registerUploadRoutes(
     createUpload(request: import('fastify').FastifyRequest): Promise<{ id: string; storageKey: string; originalFilename: string; mimeType: string; byteSize: number; sha256Hash: string; url: string; created_at: string }>;
     deleteUpload(id: string): Promise<void>;
   },
+  options?: {
+    isFileReachableFromPublishedContent?(fileId: string): Promise<boolean>;
+  },
 ) {
   // GET /uploads
   server.get('/api/uploads', async () => {
-    // Return empty list for now - gallery loads via publicDataReader
     return [];
   });
 
@@ -21,6 +23,15 @@ export function registerUploadRoutes(
       reply.status(404);
       return { error: 'Upload not found' };
     }
+
+    if (options?.isFileReachableFromPublishedContent) {
+      const reachable = await options.isFileReachableFromPublishedContent(request.params.id);
+      if (!reachable) {
+        reply.status(404);
+        return { error: 'Upload not found' };
+      }
+    }
+
     return file;
   });
 

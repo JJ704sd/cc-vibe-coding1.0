@@ -146,12 +146,15 @@ export const buildServer = async (input?: {
   const routeService = new RouteService(routeRepo);
   registerRouteRoutes(server, routeService);
 
-  const uploadRepo = createUploadRepository();
-  const uploadService = new UploadService(uploadRepo, storage);
-  registerUploadRoutes(server, uploadService);
-
   const publicRepo = createPublicRepository();
   const publicService = new PublicService(publicRepo, storage);
+
+  const uploadRepo = createUploadRepository();
+  const uploadService = new UploadService(uploadRepo, storage);
+  registerUploadRoutes(server, uploadService, {
+    isFileReachableFromPublishedContent: publicService.isFileReachableFromPublishedContent.bind(publicService),
+  });
+
   registerPublicRoutes(server, publicService);
 
   // Register auth routes if authService is provided
