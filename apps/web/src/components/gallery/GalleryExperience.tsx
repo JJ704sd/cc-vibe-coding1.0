@@ -21,6 +21,20 @@ const CARD_W = (CARD_H * 4) / 3;
 const CARD_LIFT = 80;
 const FALLBACK_X = -650;
 const FALLBACK_SPACING = 320;
+const CHINA_LNG_MIN = 73;
+const CHINA_LNG_MAX = 135;
+const CHINA_LAT_MIN = 18;
+const CHINA_LAT_MAX = 54;
+const STAR_LAYOUT = [
+  { idle: [17, 38], focus: [47, 33], size: 12, tone: '#f8fbff' },
+  { idle: [29, 20], focus: [55, 42], size: 15, tone: '#fff3c4' },
+  { idle: [43, 31], focus: [50, 55], size: 11, tone: '#dff7ff' },
+  { idle: [61, 18], focus: [61, 50], size: 14, tone: '#f7f9ff' },
+  { idle: [74, 42], focus: [64, 62], size: 12, tone: '#ffd9c8' },
+  { idle: [52, 58], focus: [57, 35], size: 10, tone: '#e9ddff' },
+  { idle: [24, 62], focus: [46, 48], size: 11, tone: '#d7f7d8' },
+  { idle: [82, 28], focus: [67, 45], size: 13, tone: '#ffe1a8' },
+] as const;
 
 function lngLatToUv(lng: number, lat: number) {
   return { u: (lng + 180) / 360, v: (lat + 90) / 180 };
@@ -35,6 +49,30 @@ function uvToCurved(u: number, v: number) {
   const y = radius * Math.cos(angle) + mapHeight - radius;
   const z = radius * Math.sin(angle);
   return new THREE.Vector3(x, y, z);
+}
+
+function clampToPercent(value: number) {
+  return Math.max(0, Math.min(100, value));
+}
+
+function imageToChinaFocusPosition(image: MediaImage, index: number) {
+  const fallback = STAR_LAYOUT[index % STAR_LAYOUT.length].focus;
+
+  if (image.longitude === undefined || image.latitude === undefined) {
+    return { left: fallback[0], top: fallback[1] };
+  }
+
+  const u = (image.longitude - CHINA_LNG_MIN) / (CHINA_LNG_MAX - CHINA_LNG_MIN);
+  const v = 1 - (image.latitude - CHINA_LAT_MIN) / (CHINA_LAT_MAX - CHINA_LAT_MIN);
+
+  return {
+    left: clampToPercent(39 + u * 32),
+    top: clampToPercent(24 + v * 46),
+  };
+}
+
+function getMediaStarLabel(image: MediaImage) {
+  return image.caption || image.altText || 'Untitled image';
 }
 
 function buildCurvedGeo(): THREE.PlaneGeometry {
@@ -225,6 +263,21 @@ export function GalleryExperience({
 
   const { anchored, fallback } = useProjection(mediaImages);
   const mapToken = import.meta.env[MAP_ENV_KEYS.tiandituToken] as string | undefined;
+  const mediaStars = useMemo(() => mediaImages.slice(0, 24).map((image, index) => {
+    const layout = STAR_LAYOUT[index % STAR_LAYOUT.length];
+    const focus = imageToChinaFocusPosition(image, index);
+
+    return {
+      image,
+      label: getMediaStarLabel(image),
+      idleLeft: layout.idle[0],
+      idleTop: layout.idle[1],
+      focusLeft: focus.left,
+      focusTop: focus.top,
+      size: layout.size,
+      tone: layout.tone,
+    };
+  }), [mediaImages]);
 
   const enterMapFocus = useCallback(() => {
     setIsMapFocused(true);
@@ -734,6 +787,116 @@ export function GalleryExperience({
                   inset: 0,
                 }}
               />
+
+              <div
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  left: isMapFocused ? '39%' : '48%',
+                  top: isMapFocused ? '17%' : '18%',
+                  width: isMapFocused ? '33%' : '28%',
+                  height: isMapFocused ? '57%' : '48%',
+                  borderRadius: '58% 42% 46% 54% / 46% 48% 52% 54%',
+                  background: nightMode
+                    ? 'linear-gradient(135deg, rgba(67, 105, 82, 0.78), rgba(126, 160, 112, 0.58))'
+                    : 'linear-gradient(135deg, rgba(70, 116, 86, 0.72), rgba(153, 185, 132, 0.58))',
+                  opacity: isMapFocused ? 0.86 : 0.42,
+                  transform: isMapFocused ? 'rotate(-4deg) scale(1)' : 'rotate(-8deg) scale(0.92)',
+                  transformOrigin: 'center',
+                  transition: 'left 520ms cubic-bezier(0.22, 1, 0.36, 1), top 520ms cubic-bezier(0.22, 1, 0.36, 1), width 520ms cubic-bezier(0.22, 1, 0.36, 1), height 520ms cubic-bezier(0.22, 1, 0.36, 1), opacity 520ms ease, transform 520ms cubic-bezier(0.22, 1, 0.36, 1)',
+                  boxShadow: nightMode
+                    ? '0 18px 42px rgba(30, 72, 82, 0.28), inset 0 0 0 2px rgba(220, 240, 255, 0.08)'
+                    : '0 16px 34px rgba(50, 88, 88, 0.2), inset 0 0 0 2px rgba(255, 255, 255, 0.32)',
+                  zIndex: 3,
+                  pointerEvents: 'none',
+                }}
+              />
+
+              <div
+                data-testid="gallery-star-field"
+                data-focus-state={isMapFocused ? 'focused' : 'idle'}
+                aria-label="中国地图媒体星点"
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  zIndex: 9,
+                  pointerEvents: 'none',
+                }}
+              >
+                {mediaStars.map((star, index) => {
+                  const left = isMapFocused ? star.focusLeft : star.idleLeft;
+                  const top = isMapFocused ? star.focusTop : star.idleTop;
+                  const size = isMapFocused ? star.size + 2 : star.size;
+
+                  return (
+                    <button
+                      key={star.image.id}
+                      type="button"
+                      data-testid="gallery-media-star"
+                      aria-label={`打开地图媒体：${star.label}`}
+                      title={star.label}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onImageSelect(star.image);
+                      }}
+                      style={{
+                        position: 'absolute',
+                        left: `${left}%`,
+                        top: `${top}%`,
+                        width: `${size + 22}px`,
+                        height: `${size + 36}px`,
+                        transform: isMapFocused
+                          ? 'translate(-50%, -50%) scale(1)'
+                          : `translate(-50%, -50%) translateY(${(index % 3) * -8}px) scale(0.92)`,
+                        transformOrigin: 'center bottom',
+                        border: 'none',
+                        padding: 0,
+                        background: 'transparent',
+                        cursor: 'pointer',
+                        pointerEvents: 'auto',
+                        transition: 'left 620ms cubic-bezier(0.22, 1, 0.36, 1), top 620ms cubic-bezier(0.22, 1, 0.36, 1), transform 620ms cubic-bezier(0.22, 1, 0.36, 1), opacity 320ms ease',
+                        opacity: isMapFocused ? 1 : 0.9,
+                      }}
+                    >
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          position: 'absolute',
+                          left: '50%',
+                          top: `${isMapFocused ? 18 : 8}px`,
+                          width: `${size}px`,
+                          height: `${size}px`,
+                          borderRadius: '50%',
+                          transform: 'translate(-50%, -50%)',
+                          background: star.image.thumbnailUrl || star.image.url
+                            ? `${star.tone} center / cover no-repeat`
+                            : star.tone,
+                          backgroundImage: star.image.thumbnailUrl || star.image.url
+                            ? `radial-gradient(circle, rgba(255,255,255,0.94) 0 22%, rgba(255,255,255,0.22) 40%, transparent 62%), url(${star.image.thumbnailUrl || star.image.url})`
+                            : `radial-gradient(circle, ${star.tone} 0 36%, rgba(255,255,255,0.28) 58%, transparent 70%)`,
+                          boxShadow: `0 0 ${isMapFocused ? 20 : 18}px ${star.tone}, 0 0 ${isMapFocused ? 42 : 32}px rgba(106, 145, 255, 0.5)`,
+                        }}
+                      />
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          position: 'absolute',
+                          left: '50%',
+                          top: `${isMapFocused ? 18 + size / 2 : 8 + size / 2}px`,
+                          width: '1px',
+                          height: isMapFocused ? '34px' : '58px',
+                          transform: 'translateX(-50%)',
+                          background: nightMode
+                            ? 'linear-gradient(180deg, rgba(224, 235, 255, 0.42), rgba(224, 235, 255, 0))'
+                            : 'linear-gradient(180deg, rgba(42, 69, 108, 0.36), rgba(42, 69, 108, 0))',
+                          opacity: isMapFocused ? 0.42 : 0.72,
+                          transition: 'height 520ms cubic-bezier(0.22, 1, 0.36, 1), opacity 320ms ease',
+                        }}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
 
               <div
                 style={{

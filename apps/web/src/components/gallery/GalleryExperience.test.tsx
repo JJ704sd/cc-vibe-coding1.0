@@ -275,4 +275,34 @@ describe('GalleryExperience', () => {
     fireEvent.click(screen.getByRole('button', { name: '收起地图' }));
     expect(mapStage.getAttribute('data-focus-state')).toBe('idle');
   });
+
+  it('renders media images as stars above the grounded map module', () => {
+    render(
+      <GalleryExperience
+        mediaImages={createMockMediaImages()}
+        nightMode={false}
+        onImageSelect={vi.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('gallery-star-field').getAttribute('data-focus-state')).toBe('idle');
+    expect(screen.getAllByTestId('gallery-media-star')).toHaveLength(3);
+    expect(screen.getByRole('button', { name: '打开地图媒体：Test caption 1' })).toBeTruthy();
+  });
+
+  it('keeps the media star layer attached to the map during focus rotation', () => {
+    render(
+      <GalleryExperience
+        mediaImages={createMockMediaImages()}
+        nightMode={false}
+        onImageSelect={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '进入地图聚焦' }));
+
+    expect(screen.getByTestId('gallery-star-field').getAttribute('data-focus-state')).toBe('focused');
+    expect(screen.getByLabelText('中国地图媒体星点')).toBeTruthy();
+    expect(screen.queryByText('中国地图媒体星点')).toBeNull();
+  });
 });

@@ -32,10 +32,7 @@ export function useCurvedMapProjection({
         return;
       }
 
-      // Give fallback images scattered positions on the map
-      const u = ((index * 137.5) % 100) / 100; // Golden ratio scatter
-      const v = ((index * 97.3) % 100) / 100;
-      anchored.push({ mediaImage, u, v });
+      fallback.push({ mediaImage, fallbackIndex: fallback.length });
     });
 
     return { anchored, fallback };
