@@ -678,64 +678,42 @@ export function GalleryExperience({
           zIndex: 20,
           pointerEvents: 'none',
           display: 'flex',
-          alignItems: isMapFocused ? 'center' : 'flex-end',
+          alignItems: 'center',
           justifyContent: 'center',
           padding: isMapFocused
             ? 'clamp(24px, 5vw, 52px)'
-            : 'clamp(80px, 14vh, 144px) clamp(20px, 4vw, 40px) clamp(44px, 8vh, 90px)',
+            : 'clamp(42px, 7vh, 84px) clamp(20px, 4vw, 44px) clamp(34px, 6vh, 72px)',
         }}
       >
         <div
           style={{
             position: 'relative',
             pointerEvents: 'auto',
-            width: isMapFocused ? 'min(82vw, 1280px)' : 'min(68vw, 1040px)',
+            width: isMapFocused ? 'min(88vw, 1320px)' : 'min(88vw, 1240px)',
             maxWidth: 'calc(100vw - 40px)',
-            height: isMapFocused ? 'min(72vh, 760px)' : 'clamp(280px, 33vw, 500px)',
+            height: isMapFocused ? 'min(74vh, 760px)' : 'clamp(360px, 50vw, 660px)',
             transform: isMapFocused
-              ? 'translate3d(0, -1.8vh, 0) scale(1.015)'
-              : 'translate3d(0, 0, 0) scale(1)',
+              ? 'translate3d(0, -1vh, 0) rotateZ(0deg) scale(1.01)'
+              : 'translate3d(0, 0, 0) rotateZ(-0.4deg) scale(1)',
             transition: 'width 480ms cubic-bezier(0.22, 1, 0.36, 1), height 480ms cubic-bezier(0.22, 1, 0.36, 1), transform 480ms cubic-bezier(0.22, 1, 0.36, 1)',
           }}
         >
           <div
-            style={{
-              position: 'absolute',
-              left: '50%',
-              top: isMapFocused ? '-34px' : '-26px',
-              transform: 'translateX(-50%)',
-              padding: '8px 14px',
-              borderRadius: '999px',
-              border: `1px solid ${nightMode ? 'rgba(182, 204, 255, 0.16)' : 'rgba(255, 255, 255, 0.36)'}`,
-              background: nightMode ? 'rgba(9, 14, 30, 0.54)' : 'rgba(255, 255, 255, 0.38)',
-              backdropFilter: 'blur(16px)',
-              color: nightMode ? 'rgba(220, 230, 255, 0.8)' : 'rgba(42, 50, 70, 0.76)',
-              fontSize: '0.72rem',
-              letterSpacing: '0.16em',
-              textTransform: 'uppercase',
-              whiteSpace: 'nowrap',
-              boxShadow: nightMode
-                ? '0 16px 34px rgba(0, 0, 0, 0.24)'
-                : '0 14px 24px rgba(84, 102, 138, 0.12)',
-            }}
-          >
-            {isMapFocused ? 'Map Focus' : 'Grounded Atlas'}
-          </div>
-
-          <div
+            data-testid="gallery-map-sheet"
+            data-layout="flat-paper"
             onClick={!isMapFocused ? enterMapFocus : undefined}
             style={{
               position: 'absolute',
               inset: 0,
               overflow: 'hidden',
-              borderRadius: isMapFocused ? '32px' : '28px',
-              transform: isMapFocused ? 'perspective(1600px) rotateX(0deg)' : 'perspective(1600px) rotateX(9deg)',
-              transformOrigin: 'center 85%',
+              borderRadius: isMapFocused ? '26px' : '22px',
+              transform: isMapFocused ? 'rotateZ(0deg) scale(1.01)' : 'rotateZ(0deg) scale(1)',
+              transformOrigin: 'center',
               transition: 'border-radius 480ms cubic-bezier(0.22, 1, 0.36, 1), transform 480ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 480ms cubic-bezier(0.22, 1, 0.36, 1)',
               border: `1px solid ${nightMode ? 'rgba(164, 188, 255, 0.14)' : 'rgba(255, 255, 255, 0.46)'}`,
               boxShadow: nightMode
-                ? '0 40px 80px rgba(0, 0, 0, 0.4), 0 10px 32px rgba(39, 54, 96, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.06)'
-                : '0 34px 70px rgba(102, 114, 156, 0.2), 0 12px 26px rgba(120, 104, 92, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.5)',
+                ? '0 22px 44px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.06)'
+                : '0 20px 42px rgba(102, 114, 156, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.5)',
               cursor: isMapFocused ? 'default' : 'zoom-in',
             }}
           >
@@ -896,46 +874,6 @@ export function GalleryExperience({
                     </button>
                   );
                 })}
-              </div>
-
-              <div
-                style={{
-                  position: 'absolute',
-                  left: 18,
-                  bottom: 18,
-                  padding: '10px 12px',
-                  maxWidth: isMapFocused ? 340 : 300,
-                  borderRadius: '18px',
-                  background: nightMode ? 'rgba(7, 10, 24, 0.58)' : 'rgba(255, 255, 255, 0.55)',
-                  border: `1px solid ${nightMode ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.6)'}`,
-                  backdropFilter: 'blur(14px)',
-                  color: nightMode ? 'rgba(224,230,244,0.82)' : 'rgba(48,54,70,0.78)',
-                  boxShadow: nightMode
-                    ? '0 18px 32px rgba(0,0,0,0.18)'
-                    : '0 12px 24px rgba(112,116,132,0.12)',
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: '0.72rem',
-                    letterSpacing: '0.14em',
-                    textTransform: 'uppercase',
-                    opacity: 0.74,
-                    marginBottom: 6,
-                  }}
-                >
-                  {mapToken ? 'Map Module' : 'Map Placeholder'}
-                </div>
-                <div
-                  style={{
-                    fontSize: isMapFocused ? '0.95rem' : '0.88rem',
-                    lineHeight: 1.4,
-                  }}
-                >
-                  {isMapFocused
-                    ? '滚轮或双指缩放，拖拽平移。按 Esc、点空白处，或点右上角收起地图。'
-                    : '地图被压成地面模块铺在舞台上，点击后进入聚焦态。'}
-                </div>
               </div>
 
               {!isMapFocused ? (

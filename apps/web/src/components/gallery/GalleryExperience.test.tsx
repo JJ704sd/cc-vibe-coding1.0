@@ -290,6 +290,21 @@ describe('GalleryExperience', () => {
     expect(screen.getByRole('button', { name: '打开地图媒体：Test caption 1' })).toBeTruthy();
   });
 
+  it('presents the map as a flat paper sheet instead of a tilted stage', () => {
+    render(
+      <GalleryExperience
+        mediaImages={createMockMediaImages()}
+        nightMode={false}
+        onImageSelect={vi.fn()}
+      />
+    );
+
+    const mapSheet = screen.getByTestId('gallery-map-sheet');
+    expect(mapSheet.getAttribute('data-layout')).toBe('flat-paper');
+    expect(mapSheet.style.transform).not.toContain('perspective');
+    expect(mapSheet.style.transform).not.toContain('rotateX');
+  });
+
   it('keeps the media star layer attached to the map during focus rotation', () => {
     render(
       <GalleryExperience
