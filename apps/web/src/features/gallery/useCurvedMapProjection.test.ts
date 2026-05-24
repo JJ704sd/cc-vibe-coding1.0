@@ -25,17 +25,13 @@ describe('useCurvedMapProjection', () => {
     expect(result.current.fallback.length).toBe(0);
   });
 
-  it('scatters images without coordinates into anchored placements', () => {
+  it('moves images without coordinates into fallback placements', () => {
     const { result } = renderHook(() =>
       useCurvedMapProjection({
         mediaImages: [{ ...baseImage, id: 'img-2' }],
       }),
     );
-    expect(result.current.anchored.length).toBe(1);
-    expect(result.current.fallback.length).toBe(0);
-    expect(result.current.anchored[0].u).toBeGreaterThanOrEqual(0);
-    expect(result.current.anchored[0].u).toBeLessThanOrEqual(1);
-    expect(result.current.anchored[0].v).toBeGreaterThanOrEqual(0);
-    expect(result.current.anchored[0].v).toBeLessThanOrEqual(1);
+    expect(result.current.anchored.length).toBe(0);
+    expect(result.current.fallback.length).toBe(1);
   });
 });
