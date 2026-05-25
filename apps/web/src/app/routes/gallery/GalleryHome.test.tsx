@@ -8,6 +8,12 @@ describe('GalleryHome', () => {
     expect(source).toContain('GalleryExperience');
   });
 
+  it('mounts the opening loading screen on first entry', () => {
+    expect(source).toContain('LoadingScreen');
+    expect(source).toContain('showLoadingScreen');
+    expect(source).toContain('onComplete={handleLoadingComplete}');
+  });
+
   it('does not contain GalleryScene', () => {
     expect(source).not.toContain('GalleryScene');
   });

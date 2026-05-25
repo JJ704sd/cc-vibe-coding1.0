@@ -33,11 +33,10 @@ function withSuspense(node: React.ReactNode) {
 }
 
 export const router = createBrowserRouter([
+  { path: '/', element: withSuspense(<HomePage />) },
   {
-    path: '/',
     element: <PublicLayout />,
     children: [
-      { index: true, element: withSuspense(<HomePage />) },
       { path: 'projects', element: withSuspense(<ProjectsPage />) },
       { path: 'projects/:projectId', element: withSuspense(<ProjectDetailPage />) },
       { path: 'map', element: withSuspense(<MapPage />) },

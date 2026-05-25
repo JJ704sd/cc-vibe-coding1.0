@@ -8,6 +8,7 @@ import {
   MapProjectionOverlay,
 } from '@/components/map';
 import { GalleryExperience } from '@/components/gallery/GalleryExperience';
+import { LoadingScreen } from '@/components/gallery/LoadingScreen';
 import { useMapRelationshipData } from '@/features/map/api/useMapRelationshipData';
 import { useProjectedMapGraph } from '@/features/map/projection/useProjectedMapGraph';
 import { httpJson } from '@/services/api/httpClient';
@@ -80,6 +81,7 @@ export function GalleryHome() {
   const [locationImages, setLocationImages] = useState<Map<string, PublicMediaImage[]>>(new Map());
   const [loadingImages, setLoadingImages] = useState(false);
   const [bootstrappingGallery, setBootstrappingGallery] = useState(false);
+  const [showLoadingScreen, setShowLoadingScreen] = useState(true);
   const [nightMode, setNightMode] = useState(() => {
     const hours = new Date().getHours() + new Date().getMinutes() / 60;
     return hours < 5.5 || hours > 18.5;
@@ -246,6 +248,10 @@ export function GalleryHome() {
     });
   }, []);
 
+  const handleLoadingComplete = useCallback(() => {
+    setShowLoadingScreen(false);
+  }, []);
+
   return (
     <div
       style={{
@@ -258,6 +264,10 @@ export function GalleryHome() {
         transition: 'background 2s ease',
       }}
     >
+      {showLoadingScreen && (
+        <LoadingScreen nightMode={nightMode} onComplete={handleLoadingComplete} />
+      )}
+
       {viewMode === 'gallery' && (
         <GalleryExperience
           mediaImages={allCurrentImages as MediaImage[]}

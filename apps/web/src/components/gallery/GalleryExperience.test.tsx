@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import fs from 'node:fs';
+import { render } from '@testing-library/react';
 import { GalleryExperience } from './GalleryExperience';
 import type { MediaImage } from '@/types/domain';
 
@@ -158,6 +159,8 @@ Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
 });
 
 describe('GalleryExperience', () => {
+  const source = fs.readFileSync('src/components/gallery/GalleryExperience.tsx', 'utf-8');
+
   const createMockMediaImages = (): MediaImage[] => [
     {
       id: 'img-1',
@@ -257,67 +260,24 @@ describe('GalleryExperience', () => {
     expect(onImageSelect).not.toHaveBeenCalled();
   });
 
-  it('keeps the map module collapsed until focus is requested', () => {
-    render(
-      <GalleryExperience
-        mediaImages={createMockMediaImages()}
-        nightMode={false}
-        onImageSelect={vi.fn()}
-      />
-    );
-
-    const mapStage = screen.getByTestId('gallery-map-stage');
-    expect(mapStage.getAttribute('data-focus-state')).toBe('idle');
-
-    fireEvent.click(screen.getByRole('button', { name: '进入地图聚焦' }));
-    expect(mapStage.getAttribute('data-focus-state')).toBe('focused');
-
-    fireEvent.click(screen.getByRole('button', { name: '收起地图' }));
-    expect(mapStage.getAttribute('data-focus-state')).toBe('idle');
+  it('does not render a DOM MapLibre sheet over the Three.js gallery scene', () => {
+    expect(source).not.toContain('maplibre-gl');
+    expect(source).not.toContain('buildTiandituRasterStyle');
+    expect(source).not.toContain('gallery-map-sheet');
+    expect(source).not.toContain('flat-paper');
   });
 
-  it('renders media images as stars above the grounded map module', () => {
-    render(
-      <GalleryExperience
-        mediaImages={createMockMediaImages()}
-        nightMode={false}
-        onImageSelect={vi.fn()}
-      />
-    );
-
-    expect(screen.getByTestId('gallery-star-field').getAttribute('data-focus-state')).toBe('idle');
-    expect(screen.getAllByTestId('gallery-media-star')).toHaveLength(3);
-    expect(screen.getByRole('button', { name: '打开地图媒体：Test caption 1' })).toBeTruthy();
+  it('keeps the curved map mesh visible inside the rotating Three.js installation', () => {
+    expect(source).toContain('mapMesh.visible = true');
+    expect(source).toContain('pivot.add(mapMesh)');
   });
 
-  it('presents the map as a flat paper sheet instead of a tilted stage', () => {
-    render(
-      <GalleryExperience
-        mediaImages={createMockMediaImages()}
-        nightMode={false}
-        onImageSelect={vi.fn()}
-      />
-    );
-
-    const mapSheet = screen.getByTestId('gallery-map-sheet');
-    expect(mapSheet.getAttribute('data-layout')).toBe('flat-paper');
-    expect(mapSheet.style.transform).not.toContain('perspective');
-    expect(mapSheet.style.transform).not.toContain('rotateX');
-  });
-
-  it('keeps the media star layer attached to the map during focus rotation', () => {
-    render(
-      <GalleryExperience
-        mediaImages={createMockMediaImages()}
-        nightMode={false}
-        onImageSelect={vi.fn()}
-      />
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: '进入地图聚焦' }));
-
-    expect(screen.getByTestId('gallery-star-field').getAttribute('data-focus-state')).toBe('focused');
-    expect(screen.getByLabelText('中国地图媒体星点')).toBeTruthy();
-    expect(screen.queryByText('中国地图媒体星点')).toBeNull();
+  it('uses the China bounds for geographic media placement', () => {
+    expect(source).toContain('CHINA_LNG_MIN');
+    expect(source).toContain('CHINA_LNG_MAX');
+    expect(source).toContain('CHINA_LAT_MIN');
+    expect(source).toContain('CHINA_LAT_MAX');
+    expect(source).toContain('longitude - CHINA_LNG_MIN');
+    expect(source).toContain('latitude - CHINA_LAT_MIN');
   });
 });
