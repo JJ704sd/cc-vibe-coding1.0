@@ -1,0 +1,18 @@
+{$TRACE_SCOPE_DOMAIN} {
+  encode gzip zstd
+
+  @api path /api/* /health /health/* /uploads/*
+  handle @api {
+    reverse_proxy 127.0.0.1:{$TRACE_SCOPE_API_PORT}
+  }
+
+  root * {$TRACE_SCOPE_WEB_ROOT}
+  try_files {path} /index.html
+  file_server
+
+  header {
+    X-Content-Type-Options "nosniff"
+    Referrer-Policy "strict-origin-when-cross-origin"
+    X-Frame-Options "SAMEORIGIN"
+  }
+}
