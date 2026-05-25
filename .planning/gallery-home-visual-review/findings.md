@@ -30,7 +30,23 @@ gallery 组件中使用了 `Cormorant Garamond` 和 `Work Sans`，但 `index.css
 
 ## 剩余风险
 
-最新曲面场景补丁已经通过聚焦测试和构建，但会话在最新截图复验前被中断。视觉复验仍是主要待办。
+最新曲面场景补丁已经通过聚焦测试、完整 web 测试和构建；浏览器复验也确认媒体卡片可见且可点击。
+
+### 本地联调数据发布图片已确认
+
+复验续跑时，API 已正常启动，`/api/public/map-relationship` 返回 200，但当前本地数据里的 15 个媒体组 `images` 均为 0。首页因此能验证 loader、独立路由、Three.js 曲面地图和非 MapLibre 路径，但不能验证媒体卡片可见或点击打开图片。
+
+修正：后续复查发现 `loc-001` 关联的 gallery 媒体组 `31cb4f65-d24c-4c51-95b5-a447cda5f5a8` 已有 `img-001`，直接访问 API `http://127.0.0.1:4000/api/public/media-sets/31cb4f65-d24c-4c51-95b5-a447cda5f5a8` 可以返回图片 URL `/api/public/uploads/dff7df3b-9e77-4806-a50c-4cb11f439bc2`。
+
+复验结果：`D:\Trae_develop_code\trace-scope-gallery-home-card-current-1440x900.png` 中媒体卡片可见；点击卡片坐标 `(520, 365)` 后打开全屏预览，截图为 `D:\Trae_develop_code\trace-scope-gallery-home-card-click-current-1440x900.png`。
+
+### Vite 代理目标不能使用 localhost
+
+在当前 Windows 环境中，`http://127.0.0.1:4000` 能访问 Trace Scope API，但 `http://localhost:4000` 返回 404。`apps/web/vite.config.ts` 原先将 `/api` 代理到 `http://localhost:4000`，导致前端通过 Vite 访问 `/api/public/media-sets/...` 返回 404。已新增 `src/app/viteProxyConfig.test.ts` 锁定代理目标为 `http://127.0.0.1:4000`，并将 `vite.config.ts` 改为 IPv4 loopback。测试先红后绿。
+
+### 用户提供的验证图片尚未落盘
+
+用户在对话中提供了蓝底角色图，可作为下一轮视觉验证素材。但该附件当前没有出现在本地文件列表中，不能直接被 API 上传。若必须使用这张具体图片，下一轮需要先拿到本地文件路径或将附件保存为本地文件。
 
 ## 相关文件
 

@@ -34,9 +34,43 @@
 - 用户在最终截图复验前中断。
 - 已停止已知的 Vite 预览 PowerShell 进程 `52964`。
 
+## 2026-05-25 复验续跑
+
+- 在沙箱外启动前端 Vite：`http://127.0.0.1:62435/`。
+- 首次只启动前端时，`/api/public/map-relationship` 返回 404，首页无法加载真实关系数据。
+- 启动 API 后，`/health/live` 返回 200，`/api/public/map-relationship` 返回 200。
+- 重新截取 `1440x900` 首页截图：`D:\Trae_develop_code\trace-scope-gallery-home-1440x900.png`。
+- 观察结果：
+  - loader 已退出；
+  - 页面非空；
+  - 公共 `PublicLayout` chrome 未出现；
+  - 不再显示平面 DOM MapLibre 面板；
+  - 可见 Three.js 星空背景和曲面地图 mesh。
+- 当前本地 API 数据中 15 个媒体组的 `images` 均为 0，因此本轮无法验证媒体卡片可见/可点击。
+- 重新运行聚焦测试集合：
+  - `src/app/router.test.ts`
+  - `src/app/routes/gallery/GalleryHome.test.tsx`
+  - `src/components/gallery/GalleryExperience.test.tsx`
+  结果：20 项通过。
+- 运行完整 web 测试套件：34 个测试文件、109 项通过。
+
 ## 待办
 
-- 最新 `GalleryExperience` 补丁后重新截图。
-- 确认 loader 退出后首页非空。
-- 确认 Three.js 场景中曲面地图和媒体卡片可见、可点击。
-- 提交前可选运行完整 `npm test`。
+已完成。提交前检查当前工作区差异即可。
+
+## 2026-05-25 媒体卡片复验完成
+
+- 重新启动 API：`http://127.0.0.1:4000/health/live` 返回 200。
+- 重新启动 Vite：`http://127.0.0.1:5173/` 返回 200。
+- 确认 `GET /api/public/media-sets/31cb4f65-d24c-4c51-95b5-a447cda5f5a8` 返回 1 张图片，URL 为 `/api/public/uploads/dff7df3b-9e77-4806-a50c-4cb11f439bc2`。
+- 使用 headless Edge 打开首页，等待 loader 退出后截图：`D:\Trae_develop_code\trace-scope-gallery-home-card-current-1440x900.png`。
+- 截图观察结果：页面非空，公共 `PublicLayout` chrome 未出现，仍是 Three.js 曲面场景，媒体图片卡片可见。
+- 点击卡片坐标 `(520, 365)` 后，全屏预览打开；点击后截图：`D:\Trae_develop_code\trace-scope-gallery-home-card-click-current-1440x900.png`。
+- DOM 复验结果：预览层存在，页面包含 1 个图片元素，`src` 指向公开上传图片，`alt` 为 `gallery image 1`。
+- 运行聚焦测试集合：
+  - `src/app/router.test.ts`
+  - `src/app/routes/gallery/GalleryHome.test.tsx`
+  - `src/components/gallery/GalleryExperience.test.tsx`
+  结果：3 个测试文件、20 项通过。
+- 运行完整 web 测试套件：35 个测试文件、110 项通过。
+- 运行 `npm run build`：Vite 生产构建通过。
