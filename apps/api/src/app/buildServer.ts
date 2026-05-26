@@ -4,7 +4,6 @@ import fastifyCors from "@fastify/cors";
 import fastifyHelmet from "@fastify/helmet";
 import fastifyMultipart from "@fastify/multipart";
 import fastifyRateLimit from "@fastify/rate-limit";
-import fastifyStatic from "@fastify/static";
 import { loadConfig } from "./config.js";
 import { createLocalFileStorage } from "../infrastructure/storage/localFileStorage.js";
 import { createProjectRepository } from "../modules/projects/repository.js";
@@ -103,13 +102,6 @@ export const buildServer = async (input?: {
   // Register multipart for file uploads
   await server.register(fastifyMultipart, {
     limits: { fileSize: config.maxUploadBytes },
-  });
-
-  // Register static file serving for uploaded files
-  await server.register(fastifyStatic, {
-    root: storageDir,
-    prefix: "/uploads/",
-    decorateReply: false,
   });
 
   // Health check
