@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildServer } from './buildServer';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 describe('buildServer', () => {
   const apps: Array<ReturnType<typeof buildServer>> = [];
@@ -116,6 +119,33 @@ describe('buildServer hardening', () => {
     });
 
     expect(second.statusCode).toBe(429);
+  });
+
+  it('does not serve uploaded storage files through the static /uploads path', async () => {
+    const storageDir = await mkdtemp(join(tmpdir(), 'trace-scope-storage-'));
+    const previousStorageDir = process.env.STORAGE_DIR;
+    process.env.STORAGE_DIR = storageDir;
+
+    const app = await buildServer();
+
+    try {
+      await writeFile(join(storageDir, 'leaked.txt'), 'draft file');
+
+      const response = await app.inject({
+        method: 'GET',
+        url: '/uploads/leaked.txt',
+      });
+
+      expect(response.statusCode).toBe(404);
+    } finally {
+      await app.close();
+      if (previousStorageDir === undefined) {
+        delete process.env.STORAGE_DIR;
+      } else {
+        process.env.STORAGE_DIR = previousStorageDir;
+      }
+      await rm(storageDir, { recursive: true, force: true });
+    }
   });
 });
 
