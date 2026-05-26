@@ -1,15 +1,11 @@
 import type { FastifyInstance } from 'fastify';
-
-const SESSION_COOKIE_NAME = 'trace_scope_session';
+import type { AdminAuthService } from './requireAdminSession.js';
+import { SESSION_COOKIE_NAME } from './requireAdminSession.js';
 
 export async function registerAuthRoutes(
   app: FastifyInstance,
   input: {
-    authService: {
-      login(data: { username: string; password: string; ipAddress: string | null; userAgent: string | null }): Promise<{ sessionToken: string; user: { id: string; username: string; role: 'admin' } }>;
-      getSession(data: { sessionToken: string }): Promise<{ user: { id: string; username: string; role: 'admin' } } | null>;
-      logout(data: { sessionToken: string }): Promise<void>;
-    };
+    authService: AdminAuthService;
     cookieSecure: boolean;
   },
 ) {
