@@ -11,8 +11,6 @@ import { createProjectRepository } from "../modules/projects/repository.js";
 import { ProjectService } from "../modules/projects/service.js";
 import { registerProjectRoutes } from "../modules/projects/routes.js";
 
-import { createLocationRepository } from "../modules/locations/repository.js";
-import { LocationService } from "../modules/locations/service.js";
 import { registerLocationRoutes } from "../modules/locations/routes.js";
 
 import { createMediaSetRepository } from "../modules/media-sets/repository.js";
@@ -36,6 +34,7 @@ import { PublicService } from "../modules/public/service.js";
 import { registerPublicRoutes } from "../modules/public/routes.js";
 
 import { registerAuthRoutes } from "../modules/auth/routes.js";
+import { createRequireAdminSession, type AdminAuthService } from "../modules/auth/requireAdminSession.js";
 import { registerSystemRoutes } from "../modules/system/routes.js";
 import type { LocalFileStorage } from "../infrastructure/storage/localFileStorage.js";
 import { AppError } from "./errors.js";
@@ -43,11 +42,7 @@ import { mkdir } from "node:fs/promises";
 import { resolve, isAbsolute } from "node:path";
 
 export const buildServer = async (input?: {
-  authService?: {
-    login(data: { username: string; password: string; ipAddress: string | null; userAgent: string | null }): Promise<{ sessionToken: string; user: { id: string; username: string; role: 'admin' } }>;
-    getSession(data: { sessionToken: string }): Promise<{ user: { id: string; username: string; role: 'admin' } } | null>;
-    logout(data: { sessionToken: string }): Promise<void>;
-  };
+  authService?: AdminAuthService;
   cookieSecure?: boolean;
   logLevel?: string;
   bodyLimitBytes?: number;
@@ -128,31 +123,33 @@ export const buildServer = async (input?: {
   // Register routes
   const projectRepo = createProjectRepository();
   const projectService = new ProjectService(projectRepo);
-  registerProjectRoutes(server, projectService);
-
-  const locationRepo = createLocationRepository();
-  const locationService = new LocationService(locationRepo);
-  registerLocationRoutes(server);
 
   const mediaSetRepo = createMediaSetRepository();
   const mediaSetService = new MediaSetService(mediaSetRepo);
-  registerMediaSetRoutes(server, mediaSetService);
 
   const mediaImageRepo = createMediaImageRepository();
   const mediaImageService = new MediaImageService();
-  registerMediaImageRoutes(server, mediaImageService);
 
   const routeRepo = createRouteRepository();
   const routeService = new RouteService(routeRepo);
-  registerRouteRoutes(server, routeService);
 
   const publicRepo = createPublicRepository();
   const publicService = new PublicService(publicRepo, storage);
 
   const uploadRepo = createUploadRepository();
   const uploadService = new UploadService(uploadRepo, storage);
-  registerUploadRoutes(server, uploadService, {
-    isFileReachableFromPublishedContent: publicService.isFileReachableFromPublishedContent.bind(publicService),
+
+  await server.register(async (adminApp) => {
+    adminApp.addHook("preHandler", createRequireAdminSession(input?.authService));
+
+    registerProjectRoutes(adminApp, projectService);
+    registerLocationRoutes(adminApp);
+    registerMediaSetRoutes(adminApp, mediaSetService);
+    registerMediaImageRoutes(adminApp, mediaImageService);
+    registerRouteRoutes(adminApp, routeService);
+    registerUploadRoutes(adminApp, uploadService, {
+      isFileReachableFromPublishedContent: publicService.isFileReachableFromPublishedContent.bind(publicService),
+    });
   });
 
   registerPublicRoutes(server, publicService);

@@ -118,3 +118,95 @@ describe('buildServer hardening', () => {
     expect(second.statusCode).toBe(429);
   });
 });
+
+describe('buildServer admin route authentication', () => {
+  const apps: Array<ReturnType<typeof buildServer>> = [];
+
+  afterEach(async () => {
+    await Promise.all(apps.map((app) => app.close()));
+  });
+
+  const protectedRequests = [
+    { method: 'GET', url: '/api/projects' },
+    { method: 'POST', url: '/api/projects', payload: {} },
+    { method: 'PUT', url: '/api/projects/project-1', payload: {} },
+    { method: 'DELETE', url: '/api/projects/project-1' },
+    { method: 'GET', url: '/api/locations' },
+    { method: 'POST', url: '/api/locations', payload: {} },
+    { method: 'PUT', url: '/api/locations/location-1', payload: {} },
+    { method: 'DELETE', url: '/api/locations/location-1' },
+    { method: 'GET', url: '/api/media-sets' },
+    { method: 'POST', url: '/api/media-sets', payload: {} },
+    { method: 'PUT', url: '/api/media-sets/media-set-1', payload: {} },
+    { method: 'DELETE', url: '/api/media-sets/media-set-1' },
+    { method: 'GET', url: '/api/media-images' },
+    { method: 'POST', url: '/api/media-images', payload: {} },
+    { method: 'PUT', url: '/api/media-images/media-image-1', payload: {} },
+    { method: 'DELETE', url: '/api/media-images/media-image-1' },
+    { method: 'GET', url: '/api/routes' },
+    { method: 'POST', url: '/api/routes', payload: {} },
+    { method: 'PUT', url: '/api/routes/route-1', payload: {} },
+    { method: 'DELETE', url: '/api/routes/route-1' },
+    { method: 'GET', url: '/api/uploads' },
+    { method: 'POST', url: '/api/uploads', payload: {} },
+    { method: 'DELETE', url: '/api/uploads/upload-1' },
+  ] as const;
+
+  it.each(protectedRequests)('returns 401 for unauthenticated $method $url', async (request) => {
+    const authService = {
+      login: vi.fn(),
+      getSession: vi.fn(),
+      logout: vi.fn(),
+    };
+    const app = await buildServer({ authService });
+    apps.push(app);
+
+    const response = await app.inject(request);
+
+    expect(response.statusCode).toBe(401);
+    expect(response.json()).toEqual({ error: 'Admin session required' });
+    expect(authService.getSession).not.toHaveBeenCalled();
+  });
+
+  it('allows protected admin routes with a valid admin session cookie', async () => {
+    const authService = {
+      login: vi.fn(),
+      getSession: vi.fn().mockResolvedValue({
+        user: { id: 'admin-1', username: 'admin', role: 'admin' as const },
+      }),
+      logout: vi.fn(),
+    };
+    const app = await buildServer({ authService });
+    apps.push(app);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/uploads',
+      headers: {
+        cookie: 'trace_scope_session=valid-token',
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual([]);
+    expect(authService.getSession).toHaveBeenCalledWith({ sessionToken: 'valid-token' });
+  });
+
+  it('keeps auth session lookup public so clients can check login state', async () => {
+    const authService = {
+      login: vi.fn(),
+      getSession: vi.fn(),
+      logout: vi.fn(),
+    };
+    const app = await buildServer({ authService });
+    apps.push(app);
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/admin/session',
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ user: null });
+  });
+});
