@@ -13,9 +13,29 @@
 
 这是一份项目现状 review，不代表整个产品已经完成交付。
 
-## 主要问题
+## 2026-05-26 状态更新
 
-### Critical：后台写接口仍需要服务端鉴权保护
+本文件原始 review 写于 `codex/D` 阶段。当前 `main` 已同步到：
+
+```text
+b262f8ab Merge pull request #8 from JJ704sd/codex/close-public-uploads
+```
+
+原始 review 中两个 Critical 风险已经处理：
+
+- 后台 CRUD 和上传 API 已在服务端增加 admin session 鉴权。
+- `/uploads/*` 直接静态公开访问已经关闭，公开文件读取统一走 `/api/public/uploads/:fileId`。
+
+当前仍应优先处理的风险：
+
+1. 生产配置从环境变量到 `buildServer` 的完整传递和测试。
+2. `STORAGE_DIR` / `UPLOAD_ROOT` 上传目录语义统一。
+3. 公开项目封面 URL 语义修正。
+4. 路线地点替换事务保护。
+
+## 主要问题（原始发现 + 当前状态）
+
+### Resolved Critical：后台写接口曾缺少服务端鉴权保护
 
 证据：
 
@@ -32,7 +52,13 @@
 - 给所有后台写接口增加共享的 `requireAdminSession` preHandler，或统一迁移到 `/api/admin/*`。
 - 补充未登录返回 `401`、登录后允许访问的接口测试。
 
-### Critical：`/uploads/*` 静态访问可能绕过发布内容检查
+当前状态：
+
+- 已解决。`apps/api/src/modules/auth/requireAdminSession.ts` 提供共享 admin session 校验。
+- `apps/api/src/app/buildServer.ts` 已将后台 CRUD 和上传模块注册到 admin session `preHandler` 后。
+- 已补充未登录访问返回 `401`、有效 session 可访问、`/api/admin/session` 保持公开查询的 API 测试。
+
+### Resolved Critical：`/uploads/*` 静态访问曾可能绕过发布内容检查
 
 证据：
 
@@ -49,6 +75,13 @@
 - 移除或限制公开 `/uploads/*` 静态挂载。
 - 公开文件统一通过 `/api/public/uploads/:fileId` 输出。
 - 后台预览文件如果需要单独入口，应走带 admin session 的接口。
+
+当前状态：
+
+- 已解决。`apps/api/src/app/buildServer.ts` 已移除 `/uploads/*` 静态目录挂载。
+- `@fastify/static` 已从 API 依赖中移除。
+- 已补充测试确认 storage 目录中的文件不能再通过 `/uploads/<file>` 直接访问。
+- 公开文件读取继续由 `/api/public/uploads/:fileId` 和发布内容可达性检查控制。
 
 ### High：生产配置需要端到端验证
 
@@ -173,49 +206,32 @@ npm --prefix 'D:\VS vibe coding files\trace-scope-platform\apps\web' run build
 说明：
 
 - 最终画廊地图和 chunk 优化阶段没有修改 API 源码，因此最后一轮没有重新运行 API tests/build。
-- API 侧仍有上文列出的服务端鉴权、上传公开访问和生产配置风险。
+- 原始 review 时 API 侧仍有服务端鉴权、上传公开访问和生产配置风险。
+- 截至 `b262f8ab`，服务端鉴权和上传公开访问收敛已经处理；剩余 API 风险集中在生产配置传递、上传目录语义、封面 URL 语义和路线地点事务。
 
-## 当前工作区说明
+## 当前主干说明
 
-分支：
+当前主干：
 
-- `codex/D`
+- `main`
+
+当前主干提交：
+
+- `b262f8ab Merge pull request #8 from JJ704sd/codex/close-public-uploads`
 
 远程：
 
 - `origin https://github.com/JJ704sd/cc-vibe-coding1.0.git`
 
-本次计划纳入提交的核心文件：
+原始 review 对应的 `codex/D` 工作区说明已经不再代表当前状态。后续应以 `main` 和最新功能报告为准：
 
-- `README.md`
-- `docs/2026-05-24-code-review.md`
-- `apps/web/vite.config.ts`
-- `apps/web/src/components/gallery/GalleryExperience.tsx`
-- `apps/web/src/components/gallery/GalleryExperience.test.tsx`
-- `apps/web/src/features/gallery/useCurvedMapProjection.ts`
-- `apps/web/src/app/routes/admin/media/AdminMediaPage.test.tsx`
-- `apps/web/src/services/api/adminApi.ts`
-- `apps/web/src/services/api/httpClient.ts`
-
-以下未跟踪文件当前保持不提交，除非后续明确要求：
-
-- `CLAUDE.md`
-- `apps/web/.env`
-- `apps/web/build.log`
-- `apps/web/check_build.sh`
-- `apps/web/vite-gallery-preview.log`
-- `apps/web/vite-gallery.log`
-- `docs/superpowers/plans/2026-04-07-gallery-reference-homepage.md`
-- `docs/superpowers/plans/2026-04-08-curved-geo-gallery.md`
-- `docs/superpowers/plans/2026-04-08-map-true-projection-overlay.md`
-- `docs/superpowers/specs/2026-04-08-curved-geo-gallery-design.md`
-- `photos/`
+- `docs/2026-05-26-current-feature-introduction-report.md`
+- `docs/plans/2026-05-24-next-stage-design-roadmap.md`
 
 ## 建议下一步
 
-1. 给所有后台写接口补服务端 admin session 鉴权。
-2. 关闭 `/uploads/*` 公开绕过路径，公开文件统一走受控接口。
-3. 验证生产配置从环境变量到 `buildServer` 的传递。
-4. 统一上传存储目录环境变量和备份目标。
-5. 修正公开项目封面 URL 语义。
-6. 给路线地点替换补事务保护。
+1. 验证生产配置从环境变量到 `buildServer` 的传递。
+2. 统一上传存储目录环境变量和备份目标。
+3. 修正公开项目封面 URL 语义。
+4. 给路线地点替换补事务保护。
+5. 补后台发布流程的完整性提示和前台公开数据一致性校验。
