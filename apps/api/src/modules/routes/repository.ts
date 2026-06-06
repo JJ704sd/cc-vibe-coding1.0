@@ -101,13 +101,22 @@ export function createRouteRepository() {
 
     async replaceRouteLocations(routeId: string, locationIds: string[]): Promise<void> {
       const pool = getPool();
-      await runQuery(pool, `DELETE FROM route_location WHERE route_id = ?`, [routeId]);
-      for (let i = 0; i < locationIds.length; i++) {
-        await runQuery(
-          pool,
-          `INSERT INTO route_location (route_id, location_id, sort_order) VALUES (?, ?, ?)`,
-          [routeId, locationIds[i], i]
-        );
+      const conn = await pool.getConnection();
+      try {
+        await conn.beginTransaction();
+        await conn.execute(`DELETE FROM route_location WHERE route_id = ?`, [routeId]);
+        for (let i = 0; i < locationIds.length; i++) {
+          await conn.execute(
+            `INSERT INTO route_location (route_id, location_id, sort_order) VALUES (?, ?, ?)`,
+            [routeId, locationIds[i], i]
+          );
+        }
+        await conn.commit();
+      } catch (error) {
+        await conn.rollback();
+        throw error;
+      } finally {
+        conn.release();
       }
     },
 
