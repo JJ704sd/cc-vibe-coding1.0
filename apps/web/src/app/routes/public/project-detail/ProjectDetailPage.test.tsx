@@ -29,7 +29,7 @@ vi.mock('@/features/projects/api/usePublicProjectDetail', () => ({
 describe('ProjectDetailPage', () => {
   it('renders project title and description', () => {
     render(<MemoryRouter><ProjectDetailPage /></MemoryRouter>);
-    expect(screen.getByText('My Project')).toBeTruthy();
+    expect(screen.getAllByText('My Project').length).toBeGreaterThan(0);
     expect(screen.getByText('A detailed description')).toBeTruthy();
   });
 

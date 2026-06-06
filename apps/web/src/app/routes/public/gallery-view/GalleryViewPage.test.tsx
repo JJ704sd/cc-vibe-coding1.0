@@ -20,6 +20,7 @@ vi.mock('@/features/media/api/usePublicMediaSet', () => ({
       description: 'A gallery of photos',
       coverImage: null,
       locationId: null,
+      projectId: 'proj-1',
       isFeatured: false,
       images: [
         { id: 'img-1', mediaSetId: 'ms-1', url: '/img/1.jpg', thumbnailUrl: '', altText: '', caption: 'Photo 1', sortOrder: 1, createdAt: '', updatedAt: '' },
@@ -33,7 +34,7 @@ vi.mock('@/features/media/api/usePublicMediaSet', () => ({
 describe('GalleryViewPage', () => {
   it('renders gallery title and description', () => {
     render(<MemoryRouter><GalleryViewPage /></MemoryRouter>);
-    expect(screen.getByText('Test Gallery')).toBeTruthy();
+    expect(screen.getAllByText('Test Gallery').length).toBeGreaterThan(0);
     expect(screen.getByText('A gallery of photos')).toBeTruthy();
   });
 });

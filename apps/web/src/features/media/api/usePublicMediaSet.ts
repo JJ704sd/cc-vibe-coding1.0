@@ -9,6 +9,7 @@ export type PublicMediaSet = {
   description: string;
   coverImage: string | null;
   locationId: string | null;
+  projectId: string;
   isFeatured: boolean;
   images: MediaImage[];
 };

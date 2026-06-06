@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import type { MediaImage } from '@/types/domain';
 
 interface MapRelationshipPanelProps {
@@ -7,6 +8,12 @@ interface MapRelationshipPanelProps {
   loadingImages?: boolean;
   onImageSelect?: (img: MediaImage) => void;
   onClose?: () => void;
+  /** When set, renders a "View project" link that goes to the project detail page. */
+  projectId?: string | null;
+  /** When set, renders an "Open media set" link that goes to the gallery/spin viewer. */
+  mediaSetId?: string | null;
+  /** Used together with mediaSetId to pick the right viewer route. */
+  mediaSetType?: 'gallery' | 'spin360' | null;
 }
 
 export function MapRelationshipPanel({
@@ -16,6 +23,9 @@ export function MapRelationshipPanel({
   loadingImages,
   onImageSelect,
   onClose,
+  projectId,
+  mediaSetId,
+  mediaSetType,
 }: MapRelationshipPanelProps) {
   return (
     <aside className="map-relationship-panel glass">
@@ -50,6 +60,50 @@ export function MapRelationshipPanel({
       <p className="muted" style={{ marginBottom: images && images.length > 0 ? '16px' : '0' }}>
         {summary}
       </p>
+      {(projectId || mediaSetId) && (
+        <div
+          data-testid="map-relationship-context-links"
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '8px',
+            marginBottom: images && images.length > 0 ? '12px' : '0',
+          }}
+        >
+          {projectId && (
+            <Link
+              to={`/projects/${projectId}`}
+              style={{
+                fontSize: '0.78rem',
+                padding: '4px 10px',
+                borderRadius: '999px',
+                background: 'rgba(91,141,238,0.18)',
+                color: 'var(--accent)',
+                textDecoration: 'none',
+                border: '1px solid rgba(91,141,238,0.4)',
+              }}
+            >
+              查看项目详情 →
+            </Link>
+          )}
+          {mediaSetId && mediaSetType && (
+            <Link
+              to={mediaSetType === 'spin360' ? `/spin/${mediaSetId}` : `/gallery/${mediaSetId}`}
+              style={{
+                fontSize: '0.78rem',
+                padding: '4px 10px',
+                borderRadius: '999px',
+                background: 'rgba(91,141,238,0.18)',
+                color: 'var(--accent)',
+                textDecoration: 'none',
+                border: '1px solid rgba(91,141,238,0.4)',
+              }}
+            >
+              打开{mediaSetType === 'spin360' ? '360' : '图集'}媒体组 →
+            </Link>
+          )}
+        </div>
+      )}
       {loadingImages && (
         <div
           style={{

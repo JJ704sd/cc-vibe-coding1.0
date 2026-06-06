@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { LocationDetailPanel } from '@/components/project/LocationDetailPanel';
 import { MediaSetCard } from '@/components/project/MediaSetCard';
 import { usePublicProjectDetail } from '@/features/projects/api/usePublicProjectDetail';
@@ -35,6 +35,19 @@ export function ProjectDetailPage() {
         <div className="empty-state-icon">◈</div>
         <h2 className="section-title mt-4">未找到可展示项目</h2>
         <p className="muted mt-2">当前没有已发布项目可供前台展示。</p>
+        <div className="flex gap-2 justify-center mt-4">
+          <Link to="/" className="btn-accent" style={{
+            display: 'inline-flex', padding: '10px 20px', textDecoration: 'none', borderRadius: '14px',
+          }}>
+            返回首页
+          </Link>
+          <Link to="/projects" style={{
+            display: 'inline-flex', padding: '10px 20px', textDecoration: 'none', borderRadius: '14px',
+            background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-secondary)',
+          }}>
+            浏览项目
+          </Link>
+        </div>
       </div>
     );
   }
@@ -48,6 +61,28 @@ export function ProjectDetailPage() {
       transition: 'background 2s ease',
       fontFamily: "'Work Sans', sans-serif",
     }}>
+      <nav
+        aria-label="Breadcrumb"
+        data-testid="project-back-nav"
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '8px',
+          alignItems: 'center',
+          fontSize: '0.78rem',
+          color: 'var(--text-secondary)',
+          fontFamily: "'Work Sans', sans-serif",
+        }}
+      >
+        <Link to="/" style={{ color: 'inherit', textDecoration: 'none' }}>首页</Link>
+        <span aria-hidden>›</span>
+        <Link to="/projects" style={{ color: 'inherit', textDecoration: 'none' }}>项目列表</Link>
+        <span aria-hidden>›</span>
+        <span style={{ color: 'var(--text)' }}>{project.title}</span>
+        <span style={{ marginLeft: 'auto' }}>
+          <Link to="/map" style={{ color: 'var(--accent)', textDecoration: 'none' }}>在地图查看 →</Link>
+        </span>
+      </nav>
       <section className="glass animate-in" style={{
         padding: '32px',
         background: nightMode ? 'rgba(15, 22, 41, 0.7)' : 'rgba(255, 255, 255, 0.7)',

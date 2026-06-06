@@ -20,6 +20,7 @@ vi.mock('@/features/media/api/usePublicMediaSet', () => ({
       description: 'A 360 spin experience',
       coverImage: null,
       locationId: null,
+      projectId: 'proj-1',
       isFeatured: false,
       images: [
         { id: 'img-1', mediaSetId: 'ms-1', url: '/spin/1.jpg', thumbnailUrl: '', altText: '', caption: 'Frame 1', sortOrder: 1, createdAt: '', updatedAt: '' },
@@ -33,7 +34,7 @@ vi.mock('@/features/media/api/usePublicMediaSet', () => ({
 describe('SpinViewPage', () => {
   it('renders spin360 title and description', () => {
     render(<MemoryRouter><SpinViewPage /></MemoryRouter>);
-    expect(screen.getByText('360 Spin Set')).toBeTruthy();
+    expect(screen.getAllByText('360 Spin Set').length).toBeGreaterThan(0);
     expect(screen.getByText('A 360 spin experience')).toBeTruthy();
   });
 });

@@ -199,6 +199,7 @@ export class PublicService {
     description: string;
     coverImage: string | null;
     locationId: string | null;
+    projectId: string;
     isFeatured: boolean;
     images: Array<{
       id: string;
@@ -242,6 +243,7 @@ export class PublicService {
       description: mediaSet.description,
       coverImage: toCoverImageUrl(mediaSet.cover_upload_file_id),
       locationId: mediaSet.location_id,
+      projectId: mediaSet.project_id,
       isFeatured: Boolean(mediaSet.is_featured),
       images: images.map((img) => ({
         id: img.id,

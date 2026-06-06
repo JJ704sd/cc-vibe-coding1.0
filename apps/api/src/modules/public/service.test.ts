@@ -107,6 +107,7 @@ describe('PublicService cover image URL semantics', () => {
       description: '',
       cover_upload_file_id: 'file-cover',
       location_id: null,
+      project_id: 'p-1',
       is_featured: 0,
     });
     repository.findMediaImagesByMediaSetId.mockResolvedValue([]);
@@ -115,6 +116,7 @@ describe('PublicService cover image URL semantics', () => {
     const result = await service.getMediaSet('ms-1');
 
     expect(result.coverImage).toBe('/api/public/uploads/file-cover');
+    expect(result.projectId).toBe('p-1');
   });
 
   it('returns renderable URLs on map relationship projects and media sets', async () => {

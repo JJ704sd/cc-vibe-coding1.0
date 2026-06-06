@@ -72,6 +72,9 @@ export function MapPage() {
           activeProject?.summary ??
           '地图作为底层空间基底，地点、轨迹与图片关系以满天星结构映射在其上。'
         }
+        projectId={activeProject?.projectId ?? activeCluster?.projectId ?? null}
+        mediaSetId={activeCluster?.mediaSetIds?.[0] ?? null}
+        mediaSetType={activeCluster?.type ?? null}
       />
     </div>
   );
