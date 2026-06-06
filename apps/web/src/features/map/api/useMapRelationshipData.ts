@@ -9,18 +9,38 @@ const EMPTY_SOURCE: BuildMapRelationshipViewModelInput = {
   routes: [],
 };
 
-export function useMapRelationshipData(): MapRelationshipViewModel {
+export interface MapRelationshipDataState extends MapRelationshipViewModel {
+  loading: boolean;
+  error: Error | null;
+}
+
+export function useMapRelationshipData(): MapRelationshipDataState {
   const [source, setSource] = useState<BuildMapRelationshipViewModelInput>(EMPTY_SOURCE);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
     fetchMapRelationshipData()
       .then((next) => {
+        if (cancelled) return;
         setSource(next as BuildMapRelationshipViewModelInput);
+        setLoading(false);
       })
-      .catch(() => {
-        // Keep empty source on error
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err : new Error(String(err)));
+        setLoading(false);
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  return useMemo(() => buildMapRelationshipViewModel(source), [source]);
+  const viewModel = useMemo(() => buildMapRelationshipViewModel(source), [source]);
+  return { ...viewModel, loading, error };
 }

@@ -48,6 +48,29 @@ export function MapPage() {
 
   return (
     <div className="map-page-shell">
+      {relationshipData.error && (
+        <div
+          data-testid="map-relationship-error"
+          role="status"
+          style={{
+            position: 'fixed',
+            top: 'max(16px, calc(env(safe-area-inset-top) + 8px))',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 60,
+            padding: '10px 18px',
+            borderRadius: '999px',
+            background: 'rgba(127,29,29,0.85)',
+            color: 'rgba(255,235,235,0.95)',
+            fontFamily: "'Work Sans', sans-serif",
+            fontSize: '0.82rem',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          地图关系数据加载失败：{relationshipData.error.message}
+        </div>
+      )}
       <div className="map-page-stage">
         <MapBase3DView
           className="map-page-base"

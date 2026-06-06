@@ -4,7 +4,7 @@ import { usePublicProjects } from '@/features/projects/api/usePublicProjects';
 import type { Project } from '@/types/domain';
 
 export function ProjectsPage() {
-  const { projects } = usePublicProjects();
+  const { projects, loading, error } = usePublicProjects();
   const [nightMode] = useState(() => {
     const h = new Date().getHours() + new Date().getMinutes() / 60;
     return h < 5.5 || h > 18.5;
@@ -46,24 +46,78 @@ export function ProjectsPage() {
             transition: 'color 2s ease',
           }}
         >
-          {projects.length} projects
+          {loading
+            ? '加载中…'
+            : error
+            ? '无法加载项目'
+            : `${projects.length} projects`}
         </p>
       </div>
 
       {/* Project grid */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-          gap: '32px',
-          maxWidth: '1400px',
-          margin: '0 auto',
-        }}
-      >
-        {projects.map((project) => (
-          <ProjectCard key={project.id} project={project} nightMode={nightMode} />
-        ))}
-      </div>
+      {loading ? (
+        <div
+          data-testid="projects-loading"
+          className="glass"
+          style={{
+            maxWidth: '420px',
+            margin: '0 auto',
+            padding: '40px 24px',
+            textAlign: 'center',
+            color: nightMode ? 'rgba(220,230,255,0.7)' : 'rgba(51,65,85,0.7)',
+          }}
+        >
+          <div style={{ fontSize: '1.1rem', marginBottom: '8px' }}>正在加载项目</div>
+          <div className="muted">从公开 API 获取中…</div>
+        </div>
+      ) : error ? (
+        <div
+          data-testid="projects-error"
+          className="glass"
+          style={{
+            maxWidth: '560px',
+            margin: '0 auto',
+            padding: '40px 24px',
+            textAlign: 'center',
+            color: nightMode ? 'rgba(255,200,200,0.9)' : 'rgba(127,29,29,0.9)',
+          }}
+        >
+          <div style={{ fontSize: '1.1rem', marginBottom: '8px' }}>无法加载已发布项目</div>
+          <div className="muted" style={{ marginBottom: '16px' }}>
+            {error.message}
+          </div>
+          <div className="muted">请稍后重试，或访问 <Link to="/map" style={{ color: 'inherit' }}>地图视图</Link> 探索已发布内容。</div>
+        </div>
+      ) : projects.length === 0 ? (
+        <div
+          data-testid="projects-empty"
+          className="glass"
+          style={{
+            maxWidth: '420px',
+            margin: '0 auto',
+            padding: '40px 24px',
+            textAlign: 'center',
+            color: nightMode ? 'rgba(220,230,255,0.7)' : 'rgba(51,65,85,0.7)',
+          }}
+        >
+          <div style={{ fontSize: '1.1rem', marginBottom: '8px' }}>暂无已发布项目</div>
+          <div className="muted">项目发布后会出现在这里。</div>
+        </div>
+      ) : (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+            gap: '32px',
+            maxWidth: '1400px',
+            margin: '0 auto',
+          }}
+        >
+          {projects.map((project) => (
+            <ProjectCard key={project.id} project={project} nightMode={nightMode} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
