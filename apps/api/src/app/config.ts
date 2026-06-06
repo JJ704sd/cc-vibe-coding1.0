@@ -9,7 +9,6 @@ export interface AppConfig {
   mysqlUser: string;
   mysqlPassword: string;
   mysqlDatabase: string;
-  uploadRoot: string;
   sessionSecret: string;
   cookieSecure: boolean;
   adminBootstrapUsername: string;
@@ -64,13 +63,15 @@ export function loadConfigFrom(env: EnvSource): AppConfig {
     host: optionalEnv(env, 'HOST', '0.0.0.0'),
     publicBaseUrl,
     maxUploadBytes: Number(env.MAX_UPLOAD_BYTES ?? '10485760'),
-    storageDir: optionalEnv(env, 'STORAGE_DIR', './storage'),
+    // STORAGE_DIR is the canonical upload storage directory used by the API,
+    // backup scripts, and deployment docs. UPLOAD_ROOT is a legacy alias kept
+    // for backward compatibility with older deployments.
+    storageDir: env.STORAGE_DIR ?? env.UPLOAD_ROOT ?? './storage',
     mysqlHost: optionalEnv(env, 'MYSQL_HOST', 'localhost'),
     mysqlPort: Number(optionalEnv(env, 'MYSQL_PORT', '3306')),
     mysqlUser: optionalEnv(env, 'MYSQL_USER', 'root'),
     mysqlPassword: optionalEnv(env, 'MYSQL_PASSWORD', ''),
     mysqlDatabase: optionalEnv(env, 'MYSQL_DATABASE', 'trace-scope-platform'),
-    uploadRoot: optionalEnv(env, 'UPLOAD_ROOT', './uploads'),
     sessionSecret: requireEnv(env, 'SESSION_SECRET', 'dev-secret-change-in-production'),
     cookieSecure: readBoolean(env.COOKIE_SECURE, false),
     adminBootstrapUsername: optionalEnv(env, 'ADMIN_BOOTSTRAP_USERNAME', 'admin'),

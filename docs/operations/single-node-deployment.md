@@ -29,7 +29,7 @@ Set these values before first start:
 - `MYSQL_USER`
 - `MYSQL_PASSWORD`
 - `MYSQL_DATABASE`
-- `UPLOAD_ROOT`
+- `STORAGE_DIR` (the API's upload storage directory; legacy `UPLOAD_ROOT` is also accepted as an alias)
 - `SESSION_SECRET`
 - `PUBLIC_BASE_URL`
 - `CORS_ORIGINS`

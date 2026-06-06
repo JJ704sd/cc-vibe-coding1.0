@@ -22,4 +22,27 @@ describe('loadConfigFrom', () => {
     expect(config.logLevel).toBe('info');
     expect(config.bodyLimitBytes).toBe(10 * 1024 * 1024);
   });
+
+  it('prefers STORAGE_DIR over the legacy UPLOAD_ROOT alias', () => {
+    const config = loadConfigFrom({
+      STORAGE_DIR: 'D:/canonical/uploads',
+      UPLOAD_ROOT: 'D:/legacy/uploads',
+    });
+
+    expect(config.storageDir).toBe('D:/canonical/uploads');
+  });
+
+  it('falls back to UPLOAD_ROOT when STORAGE_DIR is not set', () => {
+    const config = loadConfigFrom({
+      UPLOAD_ROOT: 'D:/legacy/uploads',
+    });
+
+    expect(config.storageDir).toBe('D:/legacy/uploads');
+  });
+
+  it('defaults storageDir to ./storage when neither STORAGE_DIR nor UPLOAD_ROOT is set', () => {
+    const config = loadConfigFrom({});
+
+    expect(config.storageDir).toBe('./storage');
+  });
 });

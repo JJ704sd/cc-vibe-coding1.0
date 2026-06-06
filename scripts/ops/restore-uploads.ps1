@@ -2,11 +2,11 @@
 param(
   [Parameter(Mandatory = $true)]
   [string]$ArchiveFile,
-  [string]$UploadRoot = $env:UPLOAD_ROOT
+  [string]$UploadRoot = $(if ($env:STORAGE_DIR) { $env:STORAGE_DIR } elseif ($env:UPLOAD_ROOT) { $env:UPLOAD_ROOT } else { '' })
 )
 
 if (-not (Test-Path $ArchiveFile)) { throw "Archive file not found: $ArchiveFile" }
-if (-not $UploadRoot) { throw 'UPLOAD_ROOT is required.' }
+if (-not $UploadRoot) { throw 'STORAGE_DIR (or legacy UPLOAD_ROOT) is required.' }
 
 $parentDir = Split-Path -Parent $UploadRoot
 $leafName = Split-Path -Leaf $UploadRoot
