@@ -10,6 +10,14 @@ import type {
   RouteLocationRow,
 } from "./types.js";
 
+/**
+ * Convert an upload file id into the public URL the frontend can render.
+ * Returns null when there is no cover so that callers can safely pass the
+ * result to `<img src=...>`.
+ */
+export const toCoverImageUrl = (fileId: string | null | undefined): string | null =>
+  fileId ? `/api/public/uploads/${fileId}` : null;
+
 export class PublicService {
   constructor(
     private readonly repository: PublicRepository,
@@ -67,7 +75,7 @@ export class PublicService {
       slug: p.slug,
       title: p.title,
       summary: p.summary,
-      coverImage: p.cover_upload_file_id,
+      coverImage: toCoverImageUrl(p.cover_upload_file_id),
       tags: tagsByProject[p.id] ?? [],
       status: "published" as const,
     }));
@@ -149,7 +157,7 @@ export class PublicService {
         title: project.title,
         summary: project.summary,
         description: project.description,
-        coverImage: project.cover_upload_file_id,
+        coverImage: toCoverImageUrl(project.cover_upload_file_id),
         tags: tags.map((t) => t.tag),
         status: "published",
       },
@@ -168,7 +176,7 @@ export class PublicService {
         type: ms.type as "spin360" | "gallery",
         title: ms.title,
         description: ms.description,
-        coverImage: ms.cover_upload_file_id,
+        coverImage: toCoverImageUrl(ms.cover_upload_file_id),
         locationId: ms.location_id,
         isFeatured: Boolean(ms.is_featured),
       })),
@@ -232,7 +240,7 @@ export class PublicService {
       type: mediaSet.type,
       title: mediaSet.title,
       description: mediaSet.description,
-      coverImage: mediaSet.cover_upload_file_id,
+      coverImage: toCoverImageUrl(mediaSet.cover_upload_file_id),
       locationId: mediaSet.location_id,
       isFeatured: Boolean(mediaSet.is_featured),
       images: images.map((img) => ({
@@ -355,7 +363,7 @@ export class PublicService {
         slug: p.slug,
         summary: p.summary,
         description: p.description,
-        coverImage: p.cover_upload_file_id,
+        coverImage: toCoverImageUrl(p.cover_upload_file_id),
         tags: tagsByProject[p.id] ?? [],
         status: "published" as const,
         locationIds: locationIdsByProject[p.id] ?? [],
@@ -385,7 +393,7 @@ export class PublicService {
         type: ms.type as "spin360" | "gallery",
         title: ms.title,
         description: ms.description,
-        coverImage: ms.cover_upload_file_id,
+        coverImage: toCoverImageUrl(ms.cover_upload_file_id),
         imageIds: imageIdsByMediaSet[ms.id] ?? [],
         isFeatured: Boolean(ms.is_featured),
         createdAt: ms.created_at,
