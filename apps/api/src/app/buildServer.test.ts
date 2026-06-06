@@ -147,6 +147,45 @@ describe('buildServer hardening', () => {
       await rm(storageDir, { recursive: true, force: true });
     }
   });
+
+  it('applies the configured log level to the fastify logger', async () => {
+    const app = await buildServer({ logLevel: 'debug' });
+    apps.push(app);
+
+    expect((app.log as unknown as { level: string }).level).toBe('debug');
+  });
+
+  it('honors trustProxy=true by trusting X-Forwarded-For for request.ip', async () => {
+    const app = await buildServer({ trustProxy: true });
+    apps.push(app);
+
+    app.get('/_test_ip', (request) => ({ ip: request.ip }));
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/_test_ip',
+      headers: { 'x-forwarded-for': '203.0.113.42' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ ip: '203.0.113.42' });
+  });
+
+  it('returns 413 when the request body exceeds the configured body limit', async () => {
+    const app = await buildServer({ bodyLimitBytes: 100 });
+    apps.push(app);
+
+    app.post('/_test_body', async () => ({ ok: true }));
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/_test_body',
+      payload: 'x'.repeat(200),
+      headers: { 'content-type': 'text/plain' },
+    });
+
+    expect(response.statusCode).toBe(413);
+  });
 });
 
 describe('buildServer admin route authentication', () => {

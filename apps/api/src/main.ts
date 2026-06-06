@@ -36,6 +36,12 @@ async function main() {
   const app = await buildServer({
     authService,
     cookieSecure: config.cookieSecure,
+    logLevel: config.logLevel,
+    bodyLimitBytes: config.bodyLimitBytes,
+    trustProxy: config.trustProxy,
+    corsOrigins: config.corsOrigins,
+    rateLimitMax: config.rateLimitMax,
+    rateLimitWindowMs: config.rateLimitWindowMs,
     systemHealthService,
   });
 
