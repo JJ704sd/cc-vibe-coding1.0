@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createSkyBackground } from '@/components/site/SkyBackground';
+import { computeCardOpacity, createPlaceholderTexture } from '@/features/gallery/gallerySceneMath';
 import type { MediaImage } from '@/types/domain';
 
 interface GalleryExperienceProps {
@@ -85,7 +86,24 @@ function buildCards(params: {
 
     let material: THREE.MeshStandardMaterial;
     if (img.url) {
-      const texture = loader.load(img.url);
+      const placeholder = createPlaceholderTexture();
+      const texture = loader.load(
+        img.url,
+        (loaded) => {
+          // Replace the placeholder with the real texture once the network
+          // load resolves. Failed loads keep the placeholder so the card
+          // never collapses to an empty white square.
+          loaded.colorSpace = THREE.SRGBColorSpace;
+          material.map = loaded;
+          material.needsUpdate = true;
+        },
+        undefined,
+        () => {
+          // Texture loader already falls back to the placeholder map; no
+          // extra work needed but we keep the callback so a future
+          // observer hook has a single seam to attach to.
+        },
+      );
       texture.colorSpace = THREE.SRGBColorSpace;
       material = new THREE.MeshStandardMaterial({
         map: texture,
@@ -97,11 +115,11 @@ function buildCards(params: {
       });
     } else {
       material = new THREE.MeshStandardMaterial({
-        color: 0x666666,
+        map: createPlaceholderTexture(),
         roughness: 0.5,
         side: THREE.FrontSide,
         transparent: true,
-        opacity: 0.2,
+        opacity: 0.6,
       });
     }
 
@@ -123,6 +141,7 @@ function buildCards(params: {
     group.userData.phase = Math.random() * Math.PI * 2;
     group.userData.driftAmp = 3 + Math.random() * 5;
     group.userData.entryTime = -1;
+    group.userData.baseScale = 1;
     parent.add(group);
     groups.push(group);
   }
@@ -326,6 +345,18 @@ export function GalleryExperience({
         pivot.rotation.y = time * 0.025;
       }
 
+      // Pick the card currently under the pointer so we can give it a
+      // stronger lift and a higher opacity. This reuses the raycaster
+      // created above instead of allocating a new one every frame.
+      raycaster.setFromCamera(mouse, camera);
+      const pickables: THREE.Mesh[] = [];
+      cardDataRef.current?.groups.forEach((group) => {
+        const front = group.children[0] as THREE.Mesh | undefined;
+        if (front) pickables.push(front);
+      });
+      const hoverHits = pickables.length > 0 ? raycaster.intersectObjects(pickables, false) : [];
+      const hoveredGroup = hoverHits[0]?.object.parent ?? null;
+
       cardDataRef.current?.groups.forEach((group) => {
         const { initialPos, initialRot, phase, driftAmp } = group.userData;
         if (!initialPos || !initialRot) return;
@@ -341,20 +372,23 @@ export function GalleryExperience({
           : 1 - Math.pow(-2 * entryTime + 2, 2) / 2;
         const rotAmount = (1 - entry) * Math.PI * 2;
         const yOffset = Math.max(0, (1 - entry) * 100);
-        group.position.y = initialPos.y + Math.sin(time * 0.4 + phase) * driftAmp - yOffset;
+        const isHovered = group === hoveredGroup;
+        const hoverLift = isHovered ? 18 : 0;
+        const hoverScale = isHovered ? 1.08 : 1;
+        group.position.y = initialPos.y + Math.sin(time * 0.4 + phase) * driftAmp - yOffset + hoverLift;
         group.rotation.y = initialRot.y + rotAmount;
         group.rotation.x = initialRot.x + Math.sin(time * 0.25 + phase) * 0.03;
+        group.scale.setScalar(hoverScale);
 
         const dist = camera.position.distanceTo(group.position);
-        const fade = Math.max(0, Math.min(1, (dist - 1000) / 3000));
-        const opacity = (0.92 - fade * 0.75) * entry;
+        const opacity = computeCardOpacity({ distance: dist, entry, isHovered });
         const front = group.children[0] as THREE.Mesh | undefined;
         const back = group.children[1] as THREE.Mesh | undefined;
         if (front?.material) {
           (front.material as THREE.MeshStandardMaterial).opacity = opacity;
         }
         if (back?.material) {
-          (back.material as THREE.MeshStandardMaterial).opacity = opacity;
+          (back.material as THREE.MeshStandardMaterial).opacity = opacity * 0.5;
         }
       });
 
