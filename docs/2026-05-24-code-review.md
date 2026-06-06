@@ -26,12 +26,28 @@ b262f8ab Merge pull request #8 from JJ704sd/codex/close-public-uploads
 - 后台 CRUD 和上传 API 已在服务端增加 admin session 鉴权。
 - `/uploads/*` 直接静态公开访问已经关闭，公开文件读取统一走 `/api/public/uploads/:fileId`。
 
-当前仍应优先处理的风险：
+## 2026-06-06 状态更新
 
-1. 生产配置从环境变量到 `buildServer` 的完整传递和测试。
-2. `STORAGE_DIR` / `UPLOAD_ROOT` 上传目录语义统一。
-3. 公开项目封面 URL 语义修正。
-4. 路线地点替换事务保护。
+当前 `main` 同步到：
+
+```text
+36b81293 feat(public-loading): surface loading, error, and empty states on map and projects
+```
+
+5-24 计划 `docs/plans/2026-05-24-next-stage-design-roadmap.md` 推荐的 10 项任务（阶段一/二/三）全部完成：
+
+1. 后台写接口鉴权（PR #7）
+2. 上传公开访问收敛（PR #8）
+3. 生产配置从环境变量到 `buildServer` 的完整传递（commit `ed394f75`）
+4. `STORAGE_DIR` / `UPLOAD_ROOT` 上传目录语义统一，`STORAGE_DIR` 优先 + `UPLOAD_ROOT` 兼容回退（commit `1ded5e8d`）
+5. 公开项目/媒体封面 URL 语义修正，统一返回 `/api/public/uploads/{fileId}` 风格的可渲染 URL（commit `1d22a52d`）
+6. 路线地点替换加事务保护（commit `1ca4f9c6`）
+7. 后台发布流程：项目/媒体/路线的就绪度徽标与未完整提示（commit `ba1e6206`）
+8. 画廊首页细节：图片失败占位纹理 + 指针 hover 视觉反馈（commit `cfff03b8`）
+9. 公开页面互跳导航：面包屑 + 项目/媒体组跳转链接（commit `1c1c0695`）
+10. 加载/空/失败状态：`useMapRelationshipData` 暴露 error + `ProjectsPage` 三态卡片 + `MapPage` 错误横幅（commit `36b81293`）
+
+下面"主要问题"段落后半部分的 High/Medium 风险也都已经按"当前状态"行所述处理。
 
 ## 主要问题（原始发现 + 当前状态）
 
@@ -99,6 +115,11 @@ b262f8ab Merge pull request #8 from JJ704sd/codex/close-public-uploads
 
 - 增加集成测试或启动路径断言，覆盖 CORS、rate limit、logger、body limit、trust proxy、secure cookie 等配置。
 
+当前状态：
+
+- 已解决。`apps/api/src/main.ts` 现将 `corsOrigins`、`trustProxy`、`logLevel`、`bodyLimitBytes`、`rateLimitMax`、`rateLimitWindowMs` 全部传入 `buildServer`（commit `ed394f75`）。
+- `apps/api/src/app/buildServer.test.ts` 补充了 `logLevel` / `trustProxy` / `bodyLimitBytes` 三个端到端断言；CORS / rate limit 此前已有测试。
+
 ### High：上传目录配置命名需要统一
 
 证据：
@@ -116,6 +137,12 @@ b262f8ab Merge pull request #8 from JJ704sd/codex/close-public-uploads
 - 保留一个统一的环境变量名，优先使用部署文档和运维脚本已有的命名。
 - 删除重复字段或在配置层集中映射，并补测试验证解析结果。
 
+当前状态：
+
+- 已解决。`STORAGE_DIR` 是 API 运行时唯一路径来源；`UPLOAD_ROOT` 作为兼容回退保留，老部署不会突然失效（commit `1ded5e8d`）。
+- `scripts/ops/backup-uploads.ps1` / `restore-uploads.ps1`、`apps/api/.env.example`、`docs/operations/single-node-deployment.md` 已同步。
+- `apps/api/src/app/config.test.ts` 覆盖 `STORAGE_DIR > UPLOAD_ROOT > 默认` 三档优先级。
+
 ### Medium：公开项目封面字段应返回 URL，而不是裸 file id
 
 证据：
@@ -132,6 +159,11 @@ b262f8ab Merge pull request #8 from JJ704sd/codex/close-public-uploads
 - 公开 API 返回 `coverImageUrl`。
 - 或明确拆分为 `coverFileId` 和 `coverImageUrl`，并同步更新前端类型和测试。
 
+当前状态：
+
+- 已解决。`apps/api/src/modules/public/service.ts` 新增 `toCoverImageUrl(fileId)` helper，公开 API 的 `coverImage` 字段统一返回 `/api/public/uploads/{fileId}` 风格的相对 URL（commit `1d22a52d`）。字段名保留 `coverImage` 减少前端类型破坏。
+- `apps/api/src/modules/public/service.test.ts` 覆盖四个公开接口（listProjects、getProjectDetail、getMediaSet、getMapRelationship）的封面 URL 行为。
+
 ### Medium：路线地点替换应使用事务
 
 证据：
@@ -145,6 +177,11 @@ b262f8ab Merge pull request #8 from JJ704sd/codex/close-public-uploads
 建议：
 
 - 使用单个数据库事务包住删除和插入流程。
+
+当前状态：
+
+- 已解决。`apps/api/src/modules/routes/repository.ts` 的 `replaceRouteLocations` 改用单连接事务：`getConnection()` + `beginTransaction` + DELETE/INSERT 循环 + `commit`，任一失败 `rollback` 后重抛（commit `1ca4f9c6`）。
+- `apps/api/src/modules/routes/repository.test.ts` 用 mock pool 覆盖成功 / INSERT 失败 / DELETE 失败 三种 commit/rollback 契约。
 
 ## 本次变更 Review
 
@@ -190,24 +227,22 @@ Web 构建已经增加手动 vendor 拆包：
 
 ## 验证记录
 
-本次最终 Web 状态执行过：
+最近一次全量验证（2026-06-06）执行过：
 
 ```powershell
-npm --prefix 'D:\VS vibe coding files\trace-scope-platform\apps\web' test
-npm --prefix 'D:\VS vibe coding files\trace-scope-platform\apps\web' run build
+npm --prefix "D:\VS vibe coding files\trace-scope-platform\apps\api" test
+npm --prefix "D:\VS vibe coding files\trace-scope-platform\apps\api" run build
+npm --prefix "D:\VS vibe coding files\trace-scope-platform\apps\web" test
+npm --prefix "D:\VS vibe coding files\trace-scope-platform\apps\web" run build
 ```
 
 结果：
 
-- Web tests：33 个测试文件通过，106 个测试通过。
+- API tests：8 个测试文件通过，52 个测试通过。
+- API build：通过。
+- Web tests：37 个测试文件通过，131 个测试通过。
 - Web build：通过。
-- Vite chunk size warning：手动拆包后未再出现。
-
-说明：
-
-- 最终画廊地图和 chunk 优化阶段没有修改 API 源码，因此最后一轮没有重新运行 API tests/build。
-- 原始 review 时 API 侧仍有服务端鉴权、上传公开访问和生产配置风险。
-- 截至 `b262f8ab`，服务端鉴权和上传公开访问收敛已经处理；剩余 API 风险集中在生产配置传递、上传目录语义、封面 URL 语义和路线地点事务。
+- Vite chunk size warning：手动拆包后未再出现（`vendor-maplibre` 仍最大 chunk，约 1.05 MB，但已被隔离只在地图能力加载时引入）。
 
 ## 当前主干说明
 
@@ -215,9 +250,16 @@ npm --prefix 'D:\VS vibe coding files\trace-scope-platform\apps\web' run build
 
 - `main`
 
-当前主干提交：
+最近主干提交：
 
-- `b262f8ab Merge pull request #8 from JJ704sd/codex/close-public-uploads`
+- `36b81293 feat(public-loading): surface loading, error, and empty states on map and projects`
+- `1c1c0695 feat(public-nav): cross-link project, media viewer, and map pages`
+- `cfff03b8 feat(gallery): texture placeholder and pointer hover feedback on map cards`
+- `ba1e6206 feat(admin): surface publish readiness in project, media, and route lists`
+- `1d22a52d fix(api): return renderable cover image URLs from public endpoints`
+- `1ca4f9c6 fix(api): wrap route location replace in a transaction`
+- `1ded5e8d refactor(api): unify STORAGE_DIR with legacy UPLOAD_ROOT alias`
+- `ed394f75 fix(api): forward production config from main.ts to buildServer`
 
 远程：
 
@@ -227,11 +269,14 @@ npm --prefix 'D:\VS vibe coding files\trace-scope-platform\apps\web' run build
 
 - `docs/2026-05-26-current-feature-introduction-report.md`
 - `docs/plans/2026-05-24-next-stage-design-roadmap.md`
+- `CLAUDE.md`（已修正过时分支描述）
 
 ## 建议下一步
 
-1. 验证生产配置从环境变量到 `buildServer` 的传递。
-2. 统一上传存储目录环境变量和备份目标。
-3. 修正公开项目封面 URL 语义。
-4. 给路线地点替换补事务保护。
-5. 补后台发布流程的完整性提示和前台公开数据一致性校验。
+5-24 计划 1-10 项已全部交付完成。下一步推荐：
+
+1. 同步 `apps/api/.env.production.example` 把 `UPLOAD_ROOT` 换成 `STORAGE_DIR`，跟实际 `config.ts` 行为对齐。
+2. 给移动端布局做一次专项检查（5-24 阶段三验收里提到"移动端不出现文字和控件重叠"，本轮 3-1/3-2/3-3 未专门处理）。
+3. 加 E2E 测试（Playwright）覆盖公开页 + 后台流程，防止未来回归。
+4. 配 GitHub Actions CI，让 PR 自动跑 API + Web 测试和 build。
+5. 性能优化：`vendor-maplibre` 1.05 MB 仍是最大 chunk，可在地图页用 dynamic import 延迟加载。
