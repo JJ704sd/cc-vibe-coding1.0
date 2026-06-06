@@ -139,18 +139,37 @@ export default function AdminRoutesPage() {
           <h2 className="section-title">轨迹列表</h2>
           {loading ? <p className="muted">加载中...</p> : (
             <div style={{ display: 'grid', gap: '12px', marginTop: '16px' }}>
-              {routes.map(route => (
-                <div key={route.id} className="panel" style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
-                  <div>
-                    <div>{route.name}</div>
-                    <div className="muted">地点数量：{(route.locations || []).length} · {route.color}</div>
+              {routes.map(route => {
+                const locationCount = (route.locations || []).length;
+                const isEmpty = locationCount === 0;
+                return (
+                  <div key={route.id} className="panel" style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1 1 320px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span>{route.name}</span>
+                        {isEmpty && (
+                          <span
+                            data-testid={`route-empty-${route.id}`}
+                            style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '999px', background: 'rgba(255,107,107,0.15)', color: 'rgba(255,107,107,0.95)' }}
+                          >
+                            无关联地点
+                          </span>
+                        )}
+                      </div>
+                      <div className="muted">地点数量：{locationCount} · {route.color}</div>
+                      {isEmpty && (
+                        <div style={{ marginTop: '6px', fontSize: '0.8rem', color: 'rgba(255,107,107,0.95)' }}>
+                          发布前请关联至少一个地点，否则轨迹无法在地图上绘制。
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={() => startEdit(route)}>编辑</button>
+                      <button onClick={() => handleDelete(route.id)}>删除</button>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button onClick={() => startEdit(route)}>编辑</button>
-                    <button onClick={() => handleDelete(route.id)}>删除</button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
               {routes.length === 0 && <p className="muted">暂无轨迹</p>}
             </div>
           )}

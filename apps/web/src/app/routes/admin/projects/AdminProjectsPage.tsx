@@ -1,6 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
-import { projectsApi, type Project } from '@/services/api/adminApi';
+import {
+  projectsApi,
+  locationsApi,
+  mediaSetsApi,
+  routesApi,
+  type Project,
+} from '@/services/api/adminApi';
+import { computeProjectReadiness, type ReadinessStatus } from '@/features/admin/projectReadiness';
 
 /**
  * 项目管理页面
@@ -28,10 +35,40 @@ export default function AdminProjectsPage() {
   const [tagsText, setTagsText] = useState('');
   const [status, setStatus] = useState<'draft' | 'published'>('draft');
 
+  const [countsByProject, setCountsByProject] = useState<
+    Record<string, { locations: number; mediaSets: number; routes: number }>
+  >({});
+
   const loadProjects = useCallback(async () => {
     try {
-      const data = await projectsApi.list();
-      setProjects(data);
+      const [projectData, locationData, mediaSetData, routeData] = await Promise.all([
+        projectsApi.list(),
+        locationsApi.list(),
+        mediaSetsApi.list(),
+        routesApi.list(),
+      ]);
+      setProjects(projectData);
+      const next: Record<string, { locations: number; mediaSets: number; routes: number }> = {};
+      for (const project of projectData) {
+        next[project.id] = {
+          locations: 0,
+          mediaSets: 0,
+          routes: 0,
+        };
+      }
+      for (const loc of locationData) {
+        const entry = next[loc.project_id];
+        if (entry) entry.locations += 1;
+      }
+      for (const ms of mediaSetData) {
+        const entry = next[ms.project_id];
+        if (entry) entry.mediaSets += 1;
+      }
+      for (const route of routeData) {
+        const entry = next[route.project_id];
+        if (entry) entry.routes += 1;
+      }
+      setCountsByProject(next);
     } catch (e) {
       setError('加载失败');
     }
@@ -94,6 +131,15 @@ export default function AdminProjectsPage() {
     }
   }
 
+  const readinessByProject = useMemo(() => {
+    const map: Record<string, { status: ReadinessStatus; missing: string[] }> = {};
+    for (const project of projects) {
+      const counts = countsByProject[project.id] ?? { locations: 0, mediaSets: 0, routes: 0 };
+      map[project.id] = computeProjectReadiness(project, counts);
+    }
+    return map;
+  }, [projects, countsByProject]);
+
   return (
     <div className="admin-layout page-shell" style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: '24px', paddingBottom: '48px' }}>
       <AdminSidebar />
@@ -120,18 +166,46 @@ export default function AdminProjectsPage() {
           <h2 className="section-title">项目列表</h2>
           {loading ? <p className="muted">加载中...</p> : (
             <div style={{ display: 'grid', gap: '12px', marginTop: '16px' }}>
-              {projects.map(project => (
-                <div key={project.id} className="panel" style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
-                  <div>
-                    <div>{project.title}</div>
-                    <div className="muted">{project.status} · {project.summary}</div>
+              {projects.map(project => {
+                const readiness = readinessByProject[project.id] ?? { status: 'draft' as const, missing: [] };
+                const badgeStyle =
+                  readiness.status === 'ready'
+                    ? { background: 'rgba(74,222,128,0.15)', color: 'rgba(74,222,128,0.95)' }
+                    : readiness.status === 'incomplete'
+                    ? { background: 'rgba(255,107,107,0.15)', color: 'rgba(255,107,107,0.95)' }
+                    : { background: 'rgba(150,150,170,0.15)', color: 'rgba(200,200,220,0.85)' };
+                const badgeLabel =
+                  readiness.status === 'ready'
+                    ? '已发布 · 完整'
+                    : readiness.status === 'incomplete'
+                    ? '已发布 · 未完整'
+                    : '草稿';
+                return (
+                  <div key={project.id} className="panel" style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1 1 320px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span>{project.title}</span>
+                        <span
+                          data-testid={`project-readiness-${project.id}`}
+                          style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '999px', ...badgeStyle }}
+                        >
+                          {badgeLabel}
+                        </span>
+                      </div>
+                      <div className="muted">{project.summary}</div>
+                      {readiness.status === 'incomplete' && (
+                        <div data-testid={`project-readiness-missing-${project.id}`} style={{ marginTop: '6px', fontSize: '0.8rem', color: 'rgba(255,107,107,0.95)' }}>
+                          发布前请补齐：{readiness.missing.join('、')}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={() => startEdit(project)}>编辑</button>
+                      <button onClick={() => handleDelete(project.id)}>删除</button>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button onClick={() => startEdit(project)}>编辑</button>
-                    <button onClick={() => handleDelete(project.id)}>删除</button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
               {projects.length === 0 && <p className="muted">暂无项目</p>}
             </div>
           )}

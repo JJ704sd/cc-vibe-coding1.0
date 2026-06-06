@@ -268,25 +268,44 @@ export default function AdminMediaPage() {
           <h2 className="section-title">媒体组列表</h2>
           {loading ? <p className="muted">加载中...</p> : (
             <div style={{ display: 'grid', gap: '12px', marginTop: '16px' }}>
-              {mediaSets.map(ms => (
-                <div key={ms.id} className="panel" style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center' }}>
-                  <div>
-                    <div>{ms.title}</div>
-                    <div className="muted">{ms.type} · {getProjectName(ms.project_id)} · 图片 {mediaImages.filter(i => i.media_set_id === ms.id).length} 张</div>
+              {mediaSets.map(ms => {
+                const imageCount = mediaImages.filter(i => i.media_set_id === ms.id).length;
+                const isEmpty = imageCount === 0;
+                return (
+                  <div key={ms.id} className="panel" style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ flex: '1 1 320px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <span>{ms.title}</span>
+                        {isEmpty && (
+                          <span
+                            data-testid={`mediaset-empty-${ms.id}`}
+                            style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '999px', background: 'rgba(255,107,107,0.15)', color: 'rgba(255,107,107,0.95)' }}
+                          >
+                            无图片
+                          </span>
+                        )}
+                      </div>
+                      <div className="muted">{ms.type} · {getProjectName(ms.project_id)} · 图片 {imageCount} 张</div>
+                      {isEmpty && (
+                        <div style={{ marginTop: '6px', fontSize: '0.8rem', color: 'rgba(255,107,107,0.95)' }}>
+                          发布前请至少上传一张图片，否则公开页面会显示空媒体组。
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={() => setSelectedMediaSetId(ms.id)}>管理图片</button>
+                      <button onClick={() => startEdit(ms)}>编辑</button>
+                      <button
+                        onClick={() => handleDeleteMediaSet(ms.id)}
+                        disabled={deletingIds.has(ms.id)}
+                        style={deletingIds.has(ms.id) ? { opacity: 0.5 } : { background: 'var(--danger)' }}
+                      >
+                        {deletingIds.has(ms.id) ? '删除中...' : '删除'}
+                      </button>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button onClick={() => setSelectedMediaSetId(ms.id)}>管理图片</button>
-                    <button onClick={() => startEdit(ms)}>编辑</button>
-                    <button
-                      onClick={() => handleDeleteMediaSet(ms.id)}
-                      disabled={deletingIds.has(ms.id)}
-                      style={deletingIds.has(ms.id) ? { opacity: 0.5 } : { background: 'var(--danger)' }}
-                    >
-                      {deletingIds.has(ms.id) ? '删除中...' : '删除'}
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
               {mediaSets.length === 0 && <p className="muted">暂无媒体组</p>}
             </div>
           )}
