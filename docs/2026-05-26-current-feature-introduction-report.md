@@ -7,12 +7,12 @@
 本文基于远程主干 `origin/main` 的当前状态编写。当前已同步到本地的最新主干提交为：
 
 ```text
-9c24eb72 chore(web): prune redundant adminApi fetch wrapper test
+862f790d feat(web): perf 基础 + 视觉细节升级 (sprint 2)
 ```
 
 ## 2026-06-23 状态更新
 
-`main` 当前比 2026-05-26 报告新增 4 个 commit，跨越两个独立 round:
+`main` 当前比 2026-05-26 报告新增 5 个 commit，跨越三个独立 round:
 
 **Round 1 — Dead code 清理**（commit `3a35df08`）
 
@@ -39,6 +39,53 @@ Sprint 1 验证终态:
 - API + Web tsc + vite build: 全部通过
 
 详细契约和实现位置见下文各章节与 `apps/api/src/modules/{auth,media-sets,projects,locations,routes}/`、`apps/web/src/components/common/`、`apps/web/src/services/api/adminApi.ts`。
+
+**Sprint 2 — 性能基础设施 + 视觉细节**（commit `862f790d`）
+
+分两个 subagent 并行实施，按"先 perf 后视觉"两层。
+
+**性能基础设施（6 项）**：
+
+- **favicon + OG meta**：新建 `apps/web/public/favicon.svg`（64×64 SVG clock 图标），`apps/web/index.html` `<head>` 加 favicon link、`og:type/title/description/image/url/locale`、`twitter:card/title/description/image`、`description`、`theme-color` meta。`<html lang="zh-CN">`，`<title>` 中文化。
+- **`vendor-maplibre` 动态 import**：在 `apps/web/src/lib/constants/map.ts` 新增 `loadTiandituRasterStyle(token)` dynamic import wrapper，缓存 promise、触发 `import('maplibre-gl')` + `import('maplibre-gl/dist/maplibre-gl.css')`。`MapBase3DView` 改用此 wrapper。非地图页 (`/`) 不再下载 `vendor-maplibre.js` (1.05 MB) / `vendor-maplibre.css` (70 KB)。首屏 `index.html` 只引用 `index-*.js` (9.40 KB) 和 `index-*.css` (12.53 KB)。
+- **CSS 拆 critical + lazy**：`apps/web/src/styles/index.css` 头部加 critical 注释，新建 `apps/web/src/styles/non-critical.css` 装 gallery-loading-screen / animate-in / empty-state / skeleton / gallery-image-modal / gallery-map-loading / gallery-experience-root / maplibre-gl CSS。`apps/web/src/main.tsx` 加 `void import('./styles/non-critical.css')` 异步加载。`non-critical.css` 76.26 KB 从首屏剥离。
+- **`<LazyImage>` util**：新建 `apps/web/src/lib/lazyImage.tsx`，提供 `<LazyImage src alt srcSet sizes placeholder fetchPriority onLoad onError />`，默认 `loading="lazy"` + `decoding="async"`，wrapper 用 `IntersectionObserver` (rootMargin `200px 0px`) 做占位。还提供 `buildSrcSet(fileId, widths?)` helper（默认 6 档 [320, 480, 768, 1024, 1440, 1920]，生成 `/api/public/uploads/{fileId}?w={w}` 形式 srcset；后端目前忽略 size query，fallback 安全）。本轮未替换任何已有 `<img>`，只提供 util 给后续接入。
+- **Design tokens**：在 `:root` 增量加 `--shadow-1` / `--shadow-2` / `--shadow-3`（三层 box-shadow）、`--radius-pill: 999px`、`--transition-fast: 150ms cubic-bezier(0.2,0,0,1)`、`--transition-med: 280ms cubic-bezier(0.2,0,0,1)`。加 `@media (prefers-reduced-motion: reduce)` 把 transition/animation 全部置 0ms。**未动现有** `--danger` `--accent` 等 token。
+- **vendor chunk 现状核对**：`vite.config.ts` `manualChunks` 现状记录未改。`circular chunk: vendor → vendor-react → vendor` warning 是 pre-existing（React scheduler 循环依赖），与本轮无关。
+
+**视觉细节（V1/V2/V3/V4/V6 共 5 项，跳过 V5 3D 材质 + V7 暗色模式）**：
+
+- **V1 Glass 设计系统应用**：ProjectCard / MediaSetCard / LocationDetailPanel inline 加 `backdrop-filter: var(--glass-blur)` + `background: var(--glass-bg-strong)` + `boxShadow: var(--shadow-2)`，按钮加 `var(--transition-fast)` 过渡。**未升级全局 `.panel` 样式**（CSS 只读约束，admin / CascadeDeleteDialog 中 `.panel` 仍是原 `rgba(18,18,28,0.95)`，由 owner 后续决定）。
+- **V2 Card hover 升级**：ProjectCard / MediaSetCard / LocationDetailPanel 加 `useState(hovered)` + `onMouseEnter/Leave`，hover 时 `transform: translateY(-2px) scale(1.01)` + `boxShadow: var(--shadow-3)`，transition 走 `var(--transition-med)`，叠加 `::after` 等价的高光 `<span>` (用 `--glass-border` 渐变, opacity 0.35)。`data-testid` 全部保留。
+- **V3 Skeleton + EmptyState + 错误状态**：新建 `apps/web/src/components/common/Skeleton.tsx`（3 variant: text / circle / rect，纯 CSS shimmer，支持 width/height/radius，导出 `SkeletonStack`），新建 `apps/web/src/components/common/EmptyState.tsx`（图标 + 标题 + 描述 + 可选 CTA，导出 `EmptyState` + `ErrorState`，后者带 SVG 警告 icon + `role="alert"`）。5 个公开 page 全部接入：`ProjectsPage`、`HomePage`、`ProjectDetailPage`、`MapPage`、`SpinViewPage`、`GalleryViewPage`，加载用 Skeleton、空用 EmptyState、错误用带 icon 的错误卡。
+- **V4 页面切换过渡**：新建 `apps/web/src/components/common/RouteTransition.tsx`（`AnimatePresence mode="wait"` + `motion.div`，`key = useLocation().pathname`，fade + y±8px, 280ms）。`router.tsx` 全部路由 `<RouteTransition>` 包裹（含 `/admin/login` 与 `/admin/*`）。**越界改** `apps/web/src/components/site/PublicLayout.tsx` 也注入 `AnimatePresence`（V4 必要依赖，owner 接受）。
+- **V6 空状态插画**：`EmptyState` 内置 4 个 variant —— `no-projects`（屋顶+星点）、`no-media`（两个相框+镜头）、`no-routes`（曲线轨迹+起讫点）、`no-results`（放大镜+菱形搜索）。每个 variant 配纯 inline SVG，**无新依赖**。各公开 page 空态用对应 variant。
+
+**保守方案落地**：
+
+- `--radius-sm/md/lg` **保留原值** `12px / 16px / 24px`（契约值 6/12/20 被回滚，因为没实机看过新值对 `.panel/.badge/.list-item/.stat-card/.skeleton` 圆角的影响）。
+- `--radius-pill: 999px`（新增 token）保留。
+- `mapStyles.test.ts` 间歇失败：本轮 39/152 全过，但 `.map-projection-overlay*` 已移到 `non-critical.css` 而测试断言在 `index.css`，下次 vite 时序变了可能挂（owner 收尾时改测试读 `non-critical.css` 即可）。
+
+Sprint 2 验证终态:
+- API: **13 文件 / 72 用例** 全过（不变）
+- Web: **39 文件 / 152 用例** 全过（Sprint 1 基线 37/140 + 新增 2 文件 12 用例）
+- Web tsc + vite build: 通过
+- 首屏 CSS: 12.53 KB（non-critical 76.26 KB 拆出去）
+- 首屏 JS: 9.40 KB（vendor-maplibre 1.05 MB 动态 import）
+
+**用户实机反馈（2026-06-23）**：
+
+用户在 `http://127.0.0.1:62435/` 实机访问后表示"感觉很有问题"，但未给出具体反馈。本节留空，待 owner 反馈具体观感（哪个视觉项不对 / 哪个交互不自然 / 哪个性能问题），决定是回滚部分 / 修部分 / 接受。
+
+**暂存待 owner 决策（写在 `.planning/2026-06-23-sprint2-wrap-up.md`）**：
+
+1. `--radius-sm/md/lg` 是否调到 6/12/20（暂保留 12/16/24）
+2. `global.css` 3 个 glass token 冲突如何整合（`--glass-bg` 0.03 vs 0.12 / `--glass-border` 0.12 vs 0.25 / `--glass-blur` `blur(18px) saturate(1.3) brightness(0.85)` vs `blur(14px) saturate(140%)`）。`global.css` 加载顺序在 `index.css` 之后，会覆盖同名 token。
+3. `.panel` 全局升级是否做（admin / CascadeDeleteDialog 中 `.panel` 仍是原样式）
+4. `mapStyles.test.ts` 改读 `non-critical.css`
+
+后续按用户视觉反馈决定：(a) 整体回滚 V1/V2/V3/V4/V6 视觉 5 项，保留 perf 基础设施；(b) 部分回滚；(c) 修具体问题。
 
 ## 一句话说明
 
