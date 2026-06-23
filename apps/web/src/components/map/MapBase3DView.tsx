@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Map as MaplibreMap } from 'maplibre-gl';
 import {
-  buildTiandituRasterStyle,
   DEFAULT_MAP_PROVIDER,
+  loadTiandituRasterStyle,
   MAP_CAMERA_DEFAULTS,
   MAP_ENV_KEYS,
 } from '@/lib/constants/map';
@@ -42,7 +42,7 @@ export function MapBase3DView({ className, onReady, onMapReady }: MapBase3DViewP
       }
 
       try {
-        const maplibre = await import('maplibre-gl');
+        const { maplibre, style } = await loadTiandituRasterStyle(tiandituToken);
 
         if (disposed || !containerRef.current) {
           return;
@@ -50,7 +50,7 @@ export function MapBase3DView({ className, onReady, onMapReady }: MapBase3DViewP
 
         const map = new maplibre.Map({
           container: containerRef.current,
-          style: buildTiandituRasterStyle(tiandituToken),
+          style,
           center: [...MAP_CAMERA_DEFAULTS.center],
           zoom: MAP_CAMERA_DEFAULTS.zoom,
           pitch: MAP_CAMERA_DEFAULTS.pitch,

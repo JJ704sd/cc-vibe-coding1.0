@@ -59,3 +59,31 @@ export function buildTiandituRasterStyle(token: string): StyleSpecification {
     ],
   };
 }
+
+/**
+ * Dynamic-import wrapper: defers loading `maplibre-gl` (and its bundled CSS) until
+ * a map route actually needs a Tianditu raster style. The first call awaits the
+ * module + style builder together; subsequent calls share the same promise.
+ *
+ * Use this from runtime-only map mounts (e.g. MapBase3DView). For pure type
+ * references or non-map code paths, keep using `import type` to stay out of the
+ * initial bundle.
+ */
+let cachedStylePromise: Promise<{ maplibre: typeof import('maplibre-gl'); buildStyle: typeof buildTiandituRasterStyle }> | null = null;
+
+export function loadTiandituRasterStyle(token: string): Promise<{ maplibre: typeof import('maplibre-gl'); buildStyle: typeof buildTiandituRasterStyle; style: StyleSpecification }> {
+  if (!cachedStylePromise) {
+    cachedStylePromise = (async () => {
+      const maplibre = await import('maplibre-gl');
+      // Side-effect import of maplibre's bundled stylesheet happens once, lazily.
+      // We import it here so the CSS travels with the dynamic maplibre chunk.
+      await import('maplibre-gl/dist/maplibre-gl.css');
+      return { maplibre, buildStyle: buildTiandituRasterStyle };
+    })();
+  }
+  return cachedStylePromise.then(({ maplibre, buildStyle }) => ({
+    maplibre,
+    buildStyle,
+    style: buildStyle(token),
+  }));
+}

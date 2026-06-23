@@ -1,11 +1,14 @@
 ﻿import { useMemo, useState } from 'react';
 import type { Map as MaplibreMap } from 'maplibre-gl';
+import { Link } from 'react-router-dom';
 import {
   MapBase3DView,
   MapRelationshipPanel,
   MediaClusterLayer,
   MapProjectionOverlay,
 } from '@/components/map';
+import { Skeleton, SkeletonStack } from '@/components/common/Skeleton';
+import { ErrorState } from '@/components/common/EmptyState';
 import { useMapRelationshipData } from '@/features/map/api/useMapRelationshipData';
 import { useProjectedMapGraph } from '@/features/map/projection/useProjectedMapGraph';
 
@@ -39,7 +42,7 @@ export function MapPage() {
       relationshipData.mediaClusters.find(
         (cluster) => cluster.locationId === activeLocationId,
       ) ?? null,
-    [relationshipData.mediaClusters, activeLocationId],
+    [relationshipData.projectGroups, relationshipData.mediaClusters, activeLocationId],
   );
 
   const activeProject =
@@ -64,8 +67,10 @@ export function MapPage() {
             color: 'rgba(255,235,235,0.95)',
             fontFamily: "'Work Sans', sans-serif",
             fontSize: '0.82rem',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-            backdropFilter: 'blur(8px)',
+            boxShadow: 'var(--shadow-2)',
+            backdropFilter: 'var(--glass-blur)',
+            WebkitBackdropFilter: 'var(--glass-blur)',
+            transition: 'all var(--transition-fast)',
           }}
         >
           地图关系数据加载失败：{relationshipData.error.message}
@@ -86,19 +91,69 @@ export function MapPage() {
           onLocationSelect={setActiveLocationId}
         />
         <MediaClusterLayer cluster={activeCluster} anchor={activeAnchor} />
+        {relationshipData.loading ? (
+          <div
+            data-testid="map-relationship-loading"
+            style={{
+              position: 'absolute',
+              top: '24px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 4,
+              padding: '14px 22px',
+              borderRadius: '18px',
+              background: 'var(--glass-bg-strong)',
+              border: '1px solid var(--glass-border)',
+              backdropFilter: 'var(--glass-blur)',
+              WebkitBackdropFilter: 'var(--glass-blur)',
+              boxShadow: 'var(--shadow-2)',
+              color: 'rgba(234, 240, 255, 0.92)',
+              minWidth: '220px',
+            }}
+          >
+            <SkeletonStack count={2} gap={8}>
+              <Skeleton variant="text" width="65%" height="0.95em" aria-label="加载标题" />
+              <Skeleton variant="text" width="85%" aria-label="加载描述" />
+            </SkeletonStack>
+            <div style={{ marginTop: '10px', fontSize: '0.78rem' }}>地图关系数据加载中…</div>
+          </div>
+        ) : null}
       </div>
 
-      <MapRelationshipPanel
-        title={activeNode?.title ?? activeProject?.title ?? '中国 3D 地图关系图'}
-        summary={
-          activeNode?.description ??
-          activeProject?.summary ??
-          '地图作为底层空间基底，地点、轨迹与图片关系以满天星结构映射在其上。'
-        }
-        projectId={activeProject?.projectId ?? activeCluster?.projectId ?? null}
-        mediaSetId={activeCluster?.mediaSetIds?.[0] ?? null}
-        mediaSetType={activeCluster?.type ?? null}
-      />
+      {relationshipData.error ? (
+        <ErrorState
+          testId="map-relationship-panel-error"
+          title="地图关系数据不可用"
+          message={relationshipData.error.message}
+          cta={
+            <div className="flex gap-2 justify-center">
+              <Link to="/projects" className="btn-accent" style={btnAccent}>
+                浏览项目
+              </Link>
+            </div>
+          }
+        />
+      ) : (
+        <MapRelationshipPanel
+          title={activeNode?.title ?? activeProject?.title ?? '中国 3D 地图关系图'}
+          summary={
+            activeNode?.description ??
+            activeProject?.summary ??
+            '地图作为底层空间基底，地点、轨迹与图片关系以满天星结构映射在其上。'
+          }
+          projectId={activeProject?.projectId ?? activeCluster?.projectId ?? null}
+          mediaSetId={activeCluster?.mediaSetIds?.[0] ?? null}
+          mediaSetType={activeCluster?.type ?? null}
+        />
+      )}
     </div>
   );
 }
+
+const btnAccent: React.CSSProperties = {
+  display: 'inline-flex',
+  padding: '10px 20px',
+  textDecoration: 'none',
+  borderRadius: '14px',
+  transition: 'all var(--transition-fast)',
+};

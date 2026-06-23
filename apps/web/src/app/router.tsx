@@ -3,6 +3,7 @@ import { createBrowserRouter } from 'react-router-dom';
 import { PublicLayout } from '@/components/site/PublicLayout';
 import { AuthProvider } from '@/services/auth/authContext';
 import { RequireAuth } from '@/components/admin/RequireAuth';
+import { RouteTransition } from '@/components/common/RouteTransition';
 
 const HomePage = lazy(() => import('@/app/routes/gallery/GalleryHome').then((module) => ({ default: module.GalleryHome })));
 const ProjectsPage = lazy(() => import('@/app/routes/public/projects/ProjectsPage').then((module) => ({ default: module.ProjectsPage })));
@@ -49,7 +50,9 @@ export const router = createBrowserRouter([
     element: (
       <AuthProvider>
         <RequireAuth>
-          <AdminDashboardPage />
+          <RouteTransition>
+            <AdminDashboardPage />
+          </RouteTransition>
         </RequireAuth>
       </AuthProvider>
     )
@@ -59,7 +62,9 @@ export const router = createBrowserRouter([
     element: (
       <AuthProvider>
         <RequireAuth>
-          <AdminProjectsPage />
+          <RouteTransition>
+            <AdminProjectsPage />
+          </RouteTransition>
         </RequireAuth>
       </AuthProvider>
     )
@@ -69,7 +74,9 @@ export const router = createBrowserRouter([
     element: (
       <AuthProvider>
         <RequireAuth>
-          <AdminLocationsPage />
+          <RouteTransition>
+            <AdminLocationsPage />
+          </RouteTransition>
         </RequireAuth>
       </AuthProvider>
     )
@@ -79,7 +86,9 @@ export const router = createBrowserRouter([
     element: (
       <AuthProvider>
         <RequireAuth>
-          <AdminMediaPage />
+          <RouteTransition>
+            <AdminMediaPage />
+          </RouteTransition>
         </RequireAuth>
       </AuthProvider>
     )
@@ -89,7 +98,9 @@ export const router = createBrowserRouter([
     element: (
       <AuthProvider>
         <RequireAuth>
-          <AdminRoutesPage />
+          <RouteTransition>
+            <AdminRoutesPage />
+          </RouteTransition>
         </RequireAuth>
       </AuthProvider>
     )
@@ -98,7 +109,9 @@ export const router = createBrowserRouter([
     path: '/admin/login',
     element: (
       <AuthProvider>
-        <AdminLoginPage />
+        <RouteTransition>
+          <AdminLoginPage />
+        </RouteTransition>
       </AuthProvider>
     )
   }

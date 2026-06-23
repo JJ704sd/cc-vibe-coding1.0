@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Link, Outlet } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 
 export function PublicLayout() {
   const [nightMode] = useState(() => {
     const h = new Date().getHours() + new Date().getMinutes() / 60;
     return h < 5.5 || h > 18.5;
   });
+  const location = useLocation();
 
   return (
     <div
@@ -108,9 +110,20 @@ export function PublicLayout() {
         </nav>
       </header>
 
-      {/* Page content */}
+      {/* Page content with route transition */}
       <main style={{ paddingTop: '64px' }}>
-        <Outlet />
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.28, ease: [0.2, 0, 0, 1] }}
+            data-testid="public-outlet"
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   );

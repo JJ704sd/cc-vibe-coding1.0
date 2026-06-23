@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { ProjectCard } from '@/components/project/ProjectCard';
+import { Skeleton, SkeletonStack } from '@/components/common/Skeleton';
+import { EmptyState, ErrorState } from '@/components/common/EmptyState';
 import { usePublicProjects } from '@/features/projects/api/usePublicProjects';
 import type { Project } from '@/types/domain';
 
@@ -60,49 +63,57 @@ export function ProjectsPage() {
           data-testid="projects-loading"
           className="glass"
           style={{
-            maxWidth: '420px',
-            margin: '0 auto',
-            padding: '40px 24px',
-            textAlign: 'center',
-            color: nightMode ? 'rgba(220,230,255,0.7)' : 'rgba(51,65,85,0.7)',
-          }}
-        >
-          <div style={{ fontSize: '1.1rem', marginBottom: '8px' }}>正在加载项目</div>
-          <div className="muted">从公开 API 获取中…</div>
-        </div>
-      ) : error ? (
-        <div
-          data-testid="projects-error"
-          className="glass"
-          style={{
             maxWidth: '560px',
             margin: '0 auto',
-            padding: '40px 24px',
-            textAlign: 'center',
-            color: nightMode ? 'rgba(255,200,200,0.9)' : 'rgba(127,29,29,0.9)',
-          }}
-        >
-          <div style={{ fontSize: '1.1rem', marginBottom: '8px' }}>无法加载已发布项目</div>
-          <div className="muted" style={{ marginBottom: '16px' }}>
-            {error.message}
-          </div>
-          <div className="muted">请稍后重试，或访问 <Link to="/map" style={{ color: 'inherit' }}>地图视图</Link> 探索已发布内容。</div>
-        </div>
-      ) : projects.length === 0 ? (
-        <div
-          data-testid="projects-empty"
-          className="glass"
-          style={{
-            maxWidth: '420px',
-            margin: '0 auto',
-            padding: '40px 24px',
+            padding: '40px 28px',
             textAlign: 'center',
             color: nightMode ? 'rgba(220,230,255,0.7)' : 'rgba(51,65,85,0.7)',
+            backdropFilter: 'var(--glass-blur)',
+            WebkitBackdropFilter: 'var(--glass-blur)',
+            background: 'var(--glass-bg-strong)',
+            boxShadow: 'var(--shadow-2)',
           }}
         >
-          <div style={{ fontSize: '1.1rem', marginBottom: '8px' }}>暂无已发布项目</div>
-          <div className="muted">项目发布后会出现在这里。</div>
+          <SkeletonStack count={3}>
+            <Skeleton variant="text" width="60%" aria-label="加载标题" />
+            <Skeleton variant="text" width="80%" aria-label="加载摘要" />
+            <Skeleton variant="rect" height={6} width="100%" aria-label="加载分隔线" />
+          </SkeletonStack>
+          <div className="muted" style={{ marginTop: '16px' }}>正在加载项目…</div>
         </div>
+      ) : error ? (
+        <ErrorState
+          testId="projects-error"
+          title="无法加载已发布项目"
+          message={error.message}
+          cta={
+            <div className="flex gap-2 justify-center">
+              <Link to="/map" className="btn-accent" style={btnAccent}>
+                查看地图视图
+              </Link>
+              <Link to="/" className="btn-ghost" style={btnGhost}>
+                返回首页
+              </Link>
+            </div>
+          }
+        />
+      ) : projects.length === 0 ? (
+        <EmptyState
+          variant="no-projects"
+          testId="projects-empty"
+          title="暂无已发布项目"
+          description="项目发布后会出现在这里。你也可以前往地图视图查看已发布的内容。"
+          cta={
+            <div className="flex gap-2 justify-center">
+              <Link to="/map" className="btn-accent" style={btnAccent}>
+                查看地图视图
+              </Link>
+              <Link to="/" className="btn-ghost" style={btnGhost}>
+                返回首页
+              </Link>
+            </div>
+          }
+        />
       ) : (
         <div
           style={{
@@ -114,7 +125,10 @@ export function ProjectsPage() {
           }}
         >
           {projects.map((project) => (
-            <ProjectCard key={project.id} project={project} nightMode={nightMode} />
+            <ProjectCard
+              key={project.id}
+              project={project as Pick<Project, 'id' | 'title' | 'summary' | 'coverImage' | 'tags'>}
+            />
           ))}
         </div>
       )}
@@ -122,133 +136,20 @@ export function ProjectsPage() {
   );
 }
 
-function ProjectCard({ project, nightMode }: { project: { id: string; title: string; slug: string; summary: string; coverImage: string | null; tags: string[] }; nightMode: boolean }) {
-  const [hovered, setHovered] = useState(false);
-
-  return (
-    <Link
-      to={`/projects/${project.id}`}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        display: 'block',
-        textDecoration: 'none',
-        borderRadius: '16px',
-        overflow: 'hidden',
-        background: nightMode ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.8)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        border: `1px solid ${nightMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'}`,
-        boxShadow: hovered
-          ? (nightMode ? '0 20px 60px rgba(0,0,0,0.5)' : '0 16px 48px rgba(0,0,0,0.12)')
-          : (nightMode ? '0 8px 32px rgba(0,0,0,0.3)' : '0 4px 16px rgba(0,0,0,0.06)'),
-        transform: hovered ? 'translateY(-4px) scale(1.01)' : 'none',
-        transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-      }}
-    >
-      {/* Cover image */}
-      <div style={{ aspectRatio: '16/10', overflow: 'hidden', position: 'relative' }}>
-        {project.coverImage ? (
-          <img
-            src={project.coverImage}
-            alt={project.title}
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              opacity: hovered ? 1 : 0.85,
-              transition: 'opacity 0.4s ease',
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              background: nightMode ? '#1a2240' : '#ddd',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: nightMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)',
-              fontSize: '14px',
-            }}
-          >
-            No image
-          </div>
-        )}
-        {/* Accent line on hover */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: '3px',
-            background: hovered
-              ? (nightMode ? 'linear-gradient(90deg, #7BA7FF, #a78bfa)' : 'linear-gradient(90deg, #f85a4e, #ff7b54)')
-              : 'transparent',
-            transition: 'all 0.4s ease',
-          }}
-        />
-      </div>
-
-      {/* Content */}
-      <div style={{ padding: '24px' }}>
-        <h2
-          style={{
-            fontFamily: "'Cormorant Garamond', serif",
-            fontSize: '24px',
-            fontWeight: 400,
-            fontStyle: 'italic',
-            color: nightMode ? 'rgba(230,230,240,0.95)' : 'rgba(40,40,60,0.95)',
-            margin: '0 0 8px',
-            transition: 'color 0.3s ease',
-          }}
-        >
-          {project.title}
-        </h2>
-        {project.summary && (
-          <p
-            style={{
-              fontFamily: "'Work Sans', sans-serif",
-              fontSize: '14px',
-              fontWeight: 300,
-              lineHeight: 1.6,
-              color: nightMode ? 'rgba(200,200,220,0.65)' : 'rgba(80,80,100,0.7)',
-              margin: '0 0 16px',
-              transition: 'color 0.3s ease',
-              display: '-webkit-box',
-              WebkitLineClamp: 3,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-            }}
-          >
-            {project.summary}
-          </p>
-        )}
-        {project.tags.length > 0 && (
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-            {project.tags.slice(0, 3).map((tag) => (
-              <span
-                key={tag}
-                style={{
-                  padding: '4px 12px',
-                  borderRadius: '20px',
-                  fontSize: '11px',
-                  fontFamily: "'Work Sans', sans-serif",
-                  fontWeight: 500,
-                  background: nightMode ? 'rgba(123,167,255,0.15)' : 'rgba(248,90,78,0.1)',
-                  color: nightMode ? '#7BA7FF' : '#f85a4e',
-                  border: `1px solid ${nightMode ? 'rgba(123,167,255,0.25)' : 'rgba(248,90,78,0.2)'}`,
-                  letterSpacing: '0.04em',
-                }}
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-    </Link>
-  );
-}
+const btnAccent: React.CSSProperties = {
+  display: 'inline-flex',
+  padding: '10px 20px',
+  textDecoration: 'none',
+  borderRadius: '14px',
+  transition: 'all var(--transition-fast)',
+};
+const btnGhost: React.CSSProperties = {
+  display: 'inline-flex',
+  padding: '10px 20px',
+  textDecoration: 'none',
+  borderRadius: '14px',
+  background: 'var(--glass-bg)',
+  border: '1px solid var(--glass-border)',
+  color: 'var(--text-secondary)',
+  transition: 'all var(--transition-fast)',
+};
