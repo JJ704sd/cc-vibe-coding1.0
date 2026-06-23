@@ -26,6 +26,7 @@ export function registerRouteRoutes(
       }
     ): Promise<unknown>;
     delete(id: string): Promise<boolean>;
+    cascadePreview(id: string): Promise<unknown>;
   }
 ) {
   server.get("/api/routes", async (request) => {
@@ -85,5 +86,14 @@ export function registerRouteRoutes(
     }
     reply.status(204);
     return;
+  });
+
+  server.get<{ Params: { id: string } }>("/api/routes/:id/cascade-preview", async (request, reply) => {
+    const preview = await service.cascadePreview(request.params.id);
+    if (!preview) {
+      reply.status(404);
+      return { error: "Route not found" };
+    }
+    return preview;
   });
 }

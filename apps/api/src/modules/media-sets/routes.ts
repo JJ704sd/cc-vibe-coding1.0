@@ -83,4 +83,32 @@ export function registerMediaSetRoutes(server: FastifyInstance, service: MediaSe
       throw err;
     }
   });
+
+  server.put<{
+    Params: { mediaSetId: string };
+    Body: { imageIds: string[] };
+  }>('/api/media-sets/:mediaSetId/images/order', async (request, reply) => {
+    try {
+      const images = await service.reorderImages(
+        request.params.mediaSetId,
+        request.body?.imageIds,
+      );
+      return { images };
+    } catch (err: unknown) {
+      if (err && typeof err === 'object' && 'statusCode' in err && (err as { statusCode: number }).statusCode === 404) {
+        reply.status(404);
+        return { error: 'Media set not found' };
+      }
+      throw err;
+    }
+  });
+
+  server.get<{ Params: { id: string } }>('/api/media-sets/:id/cascade-preview', async (request, reply) => {
+    const preview = await service.cascadePreview(request.params.id);
+    if (!preview) {
+      reply.status(404);
+      return { error: 'Media set not found' };
+    }
+    return preview;
+  });
 }

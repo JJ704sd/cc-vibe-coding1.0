@@ -47,4 +47,13 @@ export function registerLocationRoutes(server: FastifyInstance) {
     reply.status(204);
     return;
   });
+
+  server.get<{ Params: { id: string } }>("/api/locations/:id/cascade-preview", async (request, reply) => {
+    const preview = await service.cascadePreview(request.params.id);
+    if (!preview) {
+      reply.status(404);
+      return { error: "Location not found" };
+    }
+    return preview;
+  });
 }

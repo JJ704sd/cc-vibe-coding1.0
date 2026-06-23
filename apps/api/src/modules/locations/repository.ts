@@ -102,5 +102,25 @@ export function createLocationRepository() {
       const rows = await pool.query<{ id: string }>(sql, params);
       return rows[0] ?? null;
     },
+
+    async countMediaSetsByLocationId(locationId: string): Promise<number> {
+      const pool = getPool();
+      const rows = await pool.query<{ count: number }>(
+        `SELECT COUNT(*) AS count FROM media_set WHERE location_id = ?`,
+        [locationId],
+      );
+      return rows[0]?.count ?? 0;
+    },
+
+    async countMediaImagesByLocationId(locationId: string): Promise<number> {
+      const pool = getPool();
+      const rows = await pool.query<{ count: number }>(
+        `SELECT COUNT(*) AS count FROM media_image mi
+         INNER JOIN media_set ms ON mi.media_set_id = ms.id
+         WHERE ms.location_id = ?`,
+        [locationId],
+      );
+      return rows[0]?.count ?? 0;
+    },
   };
 }

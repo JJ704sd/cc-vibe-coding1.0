@@ -151,6 +151,55 @@ export function createProjectRepository() {
       await pool.persist();
     },
 
+    async countLocationsByProjectId(projectId: string): Promise<number> {
+      const pool = getPool();
+      const rows = await pool.query<{ count: number }>(
+        `SELECT COUNT(*) AS count FROM location WHERE project_id = ?`,
+        [projectId],
+      );
+      return rows[0]?.count ?? 0;
+    },
+
+    async countMediaSetsByProjectId(projectId: string): Promise<number> {
+      const pool = getPool();
+      const rows = await pool.query<{ count: number }>(
+        `SELECT COUNT(*) AS count FROM media_set WHERE project_id = ?`,
+        [projectId],
+      );
+      return rows[0]?.count ?? 0;
+    },
+
+    async countMediaImagesByProjectId(projectId: string): Promise<number> {
+      const pool = getPool();
+      const rows = await pool.query<{ count: number }>(
+        `SELECT COUNT(*) AS count FROM media_image mi
+         INNER JOIN media_set ms ON mi.media_set_id = ms.id
+         WHERE ms.project_id = ?`,
+        [projectId],
+      );
+      return rows[0]?.count ?? 0;
+    },
+
+    async countRoutesByProjectId(projectId: string): Promise<number> {
+      const pool = getPool();
+      const rows = await pool.query<{ count: number }>(
+        `SELECT COUNT(*) AS count FROM route WHERE project_id = ?`,
+        [projectId],
+      );
+      return rows[0]?.count ?? 0;
+    },
+
+    async countRouteLocationsByProjectId(projectId: string): Promise<number> {
+      const pool = getPool();
+      const rows = await pool.query<{ count: number }>(
+        `SELECT COUNT(*) AS count FROM route_location rl
+         INNER JOIN route r ON rl.route_id = r.id
+         WHERE r.project_id = ?`,
+        [projectId],
+      );
+      return rows[0]?.count ?? 0;
+    },
+
     async findTagsByProjectIds(ids: string[]): Promise<TagRow[]> {
       if (ids.length === 0) return [];
       const pool = getPool();

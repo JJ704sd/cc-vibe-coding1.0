@@ -1,5 +1,6 @@
 import { getPool, queryAll, queryOne, runQuery, nowISO } from '../../infrastructure/db/helpers.js';
 import type { MediaSetRow } from './types.js';
+import type { MediaImageRow } from '../media-images/types.js';
 
 export function createMediaSetRepository() {
   return {
@@ -106,6 +107,53 @@ export function createMediaSetRepository() {
       await runQuery(pool, `DELETE FROM media_set WHERE id = ?`, [id]);
     },
 
+    async reorderMediaImages(input: {
+      mediaSetId: string;
+      imageIds: string[];
+    }): Promise<MediaImageRow[]> {
+      const pool = getPool();
+      const conn = await pool.getConnection();
+      try {
+        await conn.beginTransaction();
+
+        // Phase 1: shift existing sort_order values by current count to avoid unique collisions
+        const [existingRowsResult] = await conn.query(
+          `SELECT id, sort_order FROM media_image WHERE media_set_id = ? FOR UPDATE`,
+          [input.mediaSetId],
+        );
+        const existingRows = existingRowsResult as { id: string; sort_order: number }[];
+        const offset = existingRows.length;
+        if (offset > 0) {
+          await conn.execute(
+            `UPDATE media_image SET sort_order = sort_order + ? WHERE media_set_id = ?`,
+            [offset, input.mediaSetId],
+          );
+        }
+
+        // Phase 2: rewrite sort_order to match the new order
+        for (let i = 0; i < input.imageIds.length; i++) {
+          await conn.execute(
+            `UPDATE media_image SET sort_order = ? WHERE id = ? AND media_set_id = ?`,
+            [i, input.imageIds[i], input.mediaSetId],
+          );
+        }
+
+        const [rowsResult] = await conn.query(
+          `SELECT * FROM media_image WHERE media_set_id = ? ORDER BY sort_order ASC`,
+          [input.mediaSetId],
+        );
+        const rows = rowsResult as MediaImageRow[];
+
+        await conn.commit();
+        return rows;
+      } catch (error) {
+        await conn.rollback();
+        throw error;
+      } finally {
+        conn.release();
+      }
+    },
+
     async findProjectById(id: string): Promise<{ id: string } | null> {
       const pool = getPool();
       return queryOne<{ id: string }>(pool, `SELECT id FROM project WHERE id = ?`, [id]);
@@ -119,6 +167,25 @@ export function createMediaSetRepository() {
     async findUploadFileById(id: string): Promise<{ id: string } | null> {
       const pool = getPool();
       return queryOne<{ id: string }>(pool, `SELECT id FROM upload_file WHERE id = ?`, [id]);
+    },
+
+    async findMediaImagesByMediaSetId(mediaSetId: string): Promise<{ id: string }[]> {
+      const pool = getPool();
+      return queryAll<{ id: string }>(
+        pool,
+        `SELECT id FROM media_image WHERE media_set_id = ? ORDER BY sort_order ASC`,
+        [mediaSetId],
+      );
+    },
+
+    async countMediaImagesByMediaSetId(mediaSetId: string): Promise<number> {
+      const pool = getPool();
+      const rows = await queryAll<{ count: number }>(
+        pool,
+        `SELECT COUNT(*) AS count FROM media_image WHERE media_set_id = ?`,
+        [mediaSetId],
+      );
+      return rows[0]?.count ?? 0;
     },
   };
 }

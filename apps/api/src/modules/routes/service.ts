@@ -143,4 +143,19 @@ export class RouteService {
     await this.pool.persist();
     return true;
   }
+
+  async cascadePreview(id: string): Promise<{
+    route: { id: string; name: string };
+    willDelete: { routeLocations: number };
+  } | null> {
+    const existing = await this.repository.findById(id);
+    if (!existing) {
+      return null;
+    }
+    const routeLocations = await this.repository.countRouteLocationsByRouteId(id);
+    return {
+      route: { id: existing.id, name: existing.name },
+      willDelete: { routeLocations },
+    };
+  }
 }

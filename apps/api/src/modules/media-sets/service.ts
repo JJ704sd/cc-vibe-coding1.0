@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { AppError } from '../../app/errors.js';
 import type { CreateMediaSetInput, MediaSetRow, UpdateMediaSetInput } from './types.js';
+import type { MediaImageRow } from '../media-images/types.js';
+
 export class MediaSetService {
   constructor(
     private readonly repository: {
@@ -19,6 +21,12 @@ export class MediaSetService {
         isFeatured: boolean;
       }): Promise<MediaSetRow>;
       deleteMediaSet(id: string): Promise<void>;
+      findMediaImagesByMediaSetId(mediaSetId: string): Promise<{ id: string }[]>;
+      reorderMediaImages(input: {
+        mediaSetId: string;
+        imageIds: string[];
+      }): Promise<MediaImageRow[]>;
+      countMediaImagesByMediaSetId(mediaSetId: string): Promise<number>;
       findProjectById(id: string): Promise<{ id: string } | null>;
       findLocationById(id: string): Promise<{ id: string } | null>;
       findUploadFileById(id: string): Promise<{ id: string } | null>;
@@ -100,5 +108,54 @@ export class MediaSetService {
       throw Object.assign(new Error('Media set not found'), { statusCode: 404 });
     }
     await this.repository.deleteMediaSet(id);
+  }
+
+  async reorderImages(mediaSetId: string, imageIds: string[]): Promise<MediaImageRow[]> {
+    if (!Array.isArray(imageIds) || imageIds.length === 0) {
+      throw new AppError('imageIds must be a non-empty array', 400);
+    }
+
+    const mediaSet = await this.repository.findById(mediaSetId);
+    if (!mediaSet) {
+      throw Object.assign(new Error('Media set not found'), { statusCode: 404 });
+    }
+
+    // No duplicates allowed within the requested order.
+    const uniqueIds = new Set(imageIds);
+    if (uniqueIds.size !== imageIds.length) {
+      throw new AppError('imageIds must not contain duplicates', 400);
+    }
+
+    const existingImages = await this.repository.findMediaImagesByMediaSetId(mediaSetId);
+    const existingIds = new Set(existingImages.map((img) => img.id));
+
+    // Every requested id must belong to this media set.
+    for (const id of imageIds) {
+      if (!existingIds.has(id)) {
+        throw new AppError(`imageId ${id} does not belong to this media set`, 400);
+      }
+    }
+
+    // The list must cover every existing image (no missing images allowed).
+    if (uniqueIds.size !== existingIds.size) {
+      throw new AppError('imageIds must include every image of the media set exactly once', 400);
+    }
+
+    return this.repository.reorderMediaImages({ mediaSetId, imageIds });
+  }
+
+  async cascadePreview(id: string): Promise<{
+    mediaSet: { id: string; title: string };
+    willDelete: { mediaImages: number };
+  } | null> {
+    const mediaSet = await this.repository.findById(id);
+    if (!mediaSet) {
+      return null;
+    }
+    const mediaImages = await this.repository.countMediaImagesByMediaSetId(id);
+    return {
+      mediaSet: { id: mediaSet.id, title: mediaSet.title },
+      willDelete: { mediaImages },
+    };
   }
 }

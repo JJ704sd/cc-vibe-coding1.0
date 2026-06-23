@@ -18,6 +18,11 @@ export class ProjectService {
       updateProject(id: string, input: { title?: string; slug?: string; summary?: string; description?: string; status?: string; coverUploadFileId?: string; tags?: string[]; now: string }): Promise<Project | null>;
       deleteProject(id: string): Promise<void>;
       findCoverFile(id: string): Promise<{ id: string } | null>;
+      countLocationsByProjectId(projectId: string): Promise<number>;
+      countMediaSetsByProjectId(projectId: string): Promise<number>;
+      countMediaImagesByProjectId(projectId: string): Promise<number>;
+      countRoutesByProjectId(projectId: string): Promise<number>;
+      countRouteLocationsByProjectId(projectId: string): Promise<number>;
     },
   ) {}
 
@@ -129,5 +134,32 @@ export class ProjectService {
     }
     await this.repository.deleteProject(id);
     return true;
+  }
+
+  async cascadePreview(id: string): Promise<{
+    project: { id: string; title: string };
+    willDelete: {
+      locations: number;
+      mediaSets: number;
+      mediaImages: number;
+      routes: number;
+      routeLocations: number;
+    };
+  } | null> {
+    const existing = await this.repository.findById(id);
+    if (!existing) {
+      return null;
+    }
+    const [locations, mediaSets, mediaImages, routes, routeLocations] = await Promise.all([
+      this.repository.countLocationsByProjectId(id),
+      this.repository.countMediaSetsByProjectId(id),
+      this.repository.countMediaImagesByProjectId(id),
+      this.repository.countRoutesByProjectId(id),
+      this.repository.countRouteLocationsByProjectId(id),
+    ]);
+    return {
+      project: { id: existing.id, title: existing.title },
+      willDelete: { locations, mediaSets, mediaImages, routes, routeLocations },
+    };
   }
 }

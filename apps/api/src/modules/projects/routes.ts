@@ -51,4 +51,13 @@ export function registerProjectRoutes(
     reply.status(204);
     return;
   });
+
+  server.get<{ Params: { id: string } }>('/api/projects/:id/cascade-preview', async (request, reply) => {
+    const preview = await service.cascadePreview(request.params.id);
+    if (!preview) {
+      reply.status(404);
+      return { error: 'Project not found' };
+    }
+    return preview;
+  });
 }

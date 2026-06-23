@@ -11,6 +11,8 @@ export class LocationService {
       deleteLocation(id: string): Promise<void>;
       findProjectById(projectId: string): Promise<{ id: string } | null>;
       findBySlugInProject(projectId: string, slug: string, excludeId?: string): Promise<{ id: string } | null>;
+      countMediaSetsByLocationId(locationId: string): Promise<number>;
+      countMediaImagesByLocationId(locationId: string): Promise<number>;
     }
   ) {}
 
@@ -94,5 +96,23 @@ export class LocationService {
     }
     await this.repository.deleteLocation(id);
     return true;
+  }
+
+  async cascadePreview(id: string): Promise<{
+    location: { id: string; name: string };
+    willDelete: { mediaSets: number; mediaImages: number };
+  } | null> {
+    const existing = await this.repository.findById(id);
+    if (!existing) {
+      return null;
+    }
+    const [mediaSets, mediaImages] = await Promise.all([
+      this.repository.countMediaSetsByLocationId(id),
+      this.repository.countMediaImagesByLocationId(id),
+    ]);
+    return {
+      location: { id: existing.id, name: existing.name },
+      willDelete: { mediaSets, mediaImages },
+    };
   }
 }

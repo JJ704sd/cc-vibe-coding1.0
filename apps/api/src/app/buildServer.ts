@@ -32,7 +32,7 @@ import { createPublicRepository } from "../modules/public/repository.js";
 import { PublicService } from "../modules/public/service.js";
 import { registerPublicRoutes } from "../modules/public/routes.js";
 
-import { registerAuthRoutes } from "../modules/auth/routes.js";
+import { registerAuthRoutes, LOGIN_RATE_LIMIT_MAX, LOGIN_RATE_LIMIT_WINDOW_MS } from "../modules/auth/routes.js";
 import { createRequireAdminSession, type AdminAuthService } from "../modules/auth/requireAdminSession.js";
 import { registerSystemRoutes } from "../modules/system/routes.js";
 import type { LocalFileStorage } from "../infrastructure/storage/localFileStorage.js";
@@ -153,6 +153,7 @@ export const buildServer = async (input?: {
       await registerAuthRoutes(authApp, {
         authService,
         cookieSecure: input.cookieSecure ?? config.cookieSecure,
+        loginRateLimit: { max: LOGIN_RATE_LIMIT_MAX, timeWindow: LOGIN_RATE_LIMIT_WINDOW_MS },
       });
     });
   }

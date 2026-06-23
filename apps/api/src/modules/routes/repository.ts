@@ -128,5 +128,15 @@ export function createRouteRepository() {
         [routeId, locationId, sortOrder]
       );
     },
+
+    async countRouteLocationsByRouteId(routeId: string): Promise<number> {
+      const pool = getPool();
+      const rows = await queryAll<{ count: number }>(
+        pool,
+        `SELECT COUNT(*) AS count FROM route_location WHERE route_id = ?`,
+        [routeId],
+      );
+      return rows[0]?.count ?? 0;
+    },
   };
 }
