@@ -1,37 +1,37 @@
 import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
-import { mediaSetsApi, mediaImagesApi, projectsApi, locationsApi, type MediaSet, type MediaImage, type Project, type Location } from '@/services/api/adminApi';
+import { ToastProvider } from '@/components/common/ToastProvider';
+import { useToast } from '@/components/common/useToast';
+import { CascadeDeleteDialog } from '@/components/common/CascadeDeleteDialog';
+import {
+  mediaSetsApi,
+  mediaImagesApi,
+  projectsApi,
+  locationsApi,
+  type MediaSet,
+  type MediaImage,
+  type Project,
+  type Location,
+  type MediaSetCascadePreview,
+} from '@/services/api/adminApi';
 
-/**
- * 媒体管理页面
- *
- * 媒体组表单字段：
- * - projectId: 所属项目（必填）
- * - locationId: 主绑定地点（选填）
- * - title: 媒体组标题（必填）
- * - description: 描述（选填）
- * - type: 类型 gallery|spin360（必填）
- * - isFeatured: 是否精选
- *
- * 图片表单字段：
- * - caption: 图片标题
- * - altText: alt 文字
- * - latitude/longitude: 可选地理标记
- * - sortOrder: 上传顺序自动分配
- *
- * 后续扩展方向：
- * - 拖拽排序 UI（替代当前按 sort_order 文本显示）
- * - 批量上传
- * - 裁剪/压缩预处理
- */
-export default function AdminMediaPage() {
+interface MediaSetDeleteState {
+  id: string;
+  name: string;
+}
+
+interface ImageDeleteState {
+  id: string;
+  caption: string;
+}
+
+function AdminMediaPageInner() {
+  const toast = useToast();
   const [mediaSets, setMediaSets] = useState<MediaSet[]>([]);
   const [mediaImages, setMediaImages] = useState<MediaImage[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedMediaSetId, setSelectedMediaSetId] = useState<string | null>(null);
@@ -52,15 +52,16 @@ export default function AdminMediaPage() {
   const [uploadProgress, setUploadProgress] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  function flash(msg: string, duration = 2500) {
-    setSuccess(msg);
-    setTimeout(() => setSuccess(''), duration);
-  }
+  const [dragImageId, setDragImageId] = useState<string | null>(null);
+  const [dragOverImageId, setDragOverImageId] = useState<string | null>(null);
+  const [reordering, setReordering] = useState(false);
 
-  function flashError(msg: string, duration = 3000) {
-    setError(msg);
-    setTimeout(() => setError(''), duration);
-  }
+  const [cascadeTarget, setCascadeTarget] = useState<MediaSetDeleteState | null>(null);
+  const [cascadeDeleting, setCascadeDeleting] = useState(false);
+  const [cascadeError, setCascadeError] = useState<string | null>(null);
+
+  const [imageDeleteTarget, setImageDeleteTarget] = useState<ImageDeleteState | null>(null);
+  const [imageDeleting, setImageDeleting] = useState(false);
 
   const loadData = useCallback(async () => {
     const [sets, imgs, projs, locs] = await Promise.all([
@@ -91,6 +92,11 @@ export default function AdminMediaPage() {
       .sort((a, b) => a.sort_order - b.sort_order);
   }, [selectedMediaSetId, mediaImages]);
 
+  const locationsForProject = useMemo(
+    () => (projectId ? locations.filter(l => l.project_id === projectId) : locations),
+    [locations, projectId],
+  );
+
   function startEdit(ms: MediaSet) {
     setEditingId(ms.id);
     setSelectedMediaSetId(ms.id);
@@ -114,8 +120,8 @@ export default function AdminMediaPage() {
   }
 
   async function handleSave() {
-    if (!projectId) { flashError('请选择所属项目'); return; }
-    if (!title.trim()) { flashError('请输入标题'); return; }
+    if (!projectId) { toast.error('请选择所属项目'); return; }
+    if (!title.trim()) { toast.error('请输入标题'); return; }
     setSaving(true);
     try {
       const data = {
@@ -128,57 +134,68 @@ export default function AdminMediaPage() {
       };
       if (editingId) {
         await mediaSetsApi.update(editingId, data);
-        flash('已保存');
+        toast.success('已保存');
       } else {
         await mediaSetsApi.create(data);
-        flash('已创建');
+        toast.success('已创建');
       }
       await loadData();
       startCreate();
     } catch {
-      flashError(editingId ? '保存失败' : '创建失败');
+      toast.error(editingId ? '保存失败' : '创建失败');
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleDeleteMediaSet(id: string) {
-    setDeletingIds(prev => new Set(prev).add(id));
+  function requestDeleteMediaSet(ms: MediaSet) {
+    setCascadeError(null);
+    setCascadeTarget({ id: ms.id, name: ms.title });
+  }
+
+  async function confirmCascadeDelete() {
+    if (!cascadeTarget) return;
+    setCascadeDeleting(true);
     try {
-      await mediaSetsApi.delete(id);
-      if (selectedMediaSetId === id) setSelectedMediaSetId(null);
+      await mediaSetsApi.delete(cascadeTarget.id);
+      if (selectedMediaSetId === cascadeTarget.id) setSelectedMediaSetId(null);
       await loadData();
-      flash('已删除');
-    } catch {
-      flashError('删除失败');
+      toast.success('已删除');
+      setCascadeTarget(null);
+    } catch (e) {
+      setCascadeError(e instanceof Error ? e.message : '删除失败');
     } finally {
-      setDeletingIds(prev => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
+      setCascadeDeleting(false);
     }
   }
 
-  async function handleDeleteImage(id: string) {
-    setDeletingIds(prev => new Set(prev).add(id));
+  function requestDeleteImage(image: MediaImage) {
+    setImageDeleteTarget({ id: image.id, caption: image.caption || image.alt_text || image.id });
+  }
+
+  async function confirmImageDelete() {
+    if (!imageDeleteTarget) return;
+    setImageDeleting(true);
+    setDeletingIds(prev => new Set(prev).add(imageDeleteTarget.id));
     try {
-      await mediaImagesApi.delete(id);
+      await mediaImagesApi.delete(imageDeleteTarget.id);
       await loadData();
-      flash('已删除');
+      toast.success('已删除');
+      setImageDeleteTarget(null);
     } catch {
-      flashError('删除图片失败');
+      toast.error('删除图片失败');
     } finally {
+      setImageDeleting(false);
       setDeletingIds(prev => {
         const next = new Set(prev);
-        next.delete(id);
+        next.delete(imageDeleteTarget!.id);
         return next;
       });
     }
   }
 
   async function handleUploadImage(file: File) {
-    if (!selectedMediaSetId) { flashError('请先选择一个媒体组'); return; }
+    if (!selectedMediaSetId) { toast.error('请先选择一个媒体组'); return; }
     setUploading(true);
     setUploadProgress('上传中...');
     try {
@@ -207,14 +224,92 @@ export default function AdminMediaPage() {
       setImageAltText('');
       setImageLatitude('');
       setImageLongitude('');
-      flash('上传成功！');
+      toast.success('上传成功！');
     } catch (e) {
-      flashError(e instanceof Error ? e.message : '上传失败');
+      toast.error(e instanceof Error ? e.message : '上传失败');
     } finally {
       setUploading(false);
       setUploadProgress('');
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  }
+
+  async function reorderImages(newOrder: MediaImage[]) {
+    if (!selectedMediaSetId) return;
+    const previousOrder = selectedImages;
+    const optimistic = newOrder.map((img, idx) => ({ ...img, sort_order: idx + 1 }));
+    setMediaImages(prev => {
+      const others = prev.filter(img => img.media_set_id !== selectedMediaSetId);
+      return [...others, ...optimistic];
+    });
+    setReordering(true);
+    try {
+      const ids = optimistic.map(img => img.id);
+      const res = await mediaSetsApi.reorderImages(selectedMediaSetId, ids);
+      setMediaImages(prev => {
+        const others = prev.filter(img => img.media_set_id !== selectedMediaSetId);
+        return [...others, ...res.images];
+      });
+      toast.success('已更新图片顺序');
+    } catch (e) {
+      setMediaImages(prev => {
+        const others = prev.filter(img => img.media_set_id !== selectedMediaSetId);
+        return [...others, ...previousOrder];
+      });
+      toast.error(e instanceof Error ? e.message : '更新图片顺序失败');
+    } finally {
+      setReordering(false);
+    }
+  }
+
+  function handleDragStart(imageId: string) {
+    setDragImageId(imageId);
+  }
+
+  function handleDragOver(e: React.DragEvent, overId: string) {
+    e.preventDefault();
+    if (overId !== dragOverImageId) {
+      setDragOverImageId(overId);
+    }
+  }
+
+  function handleDragLeave() {
+    setDragOverImageId(null);
+  }
+
+  function handleDrop(e: React.DragEvent, dropTargetId: string) {
+    e.preventDefault();
+    if (!dragImageId || dragImageId === dropTargetId || reordering) {
+      setDragImageId(null);
+      setDragOverImageId(null);
+      return;
+    }
+    const current = selectedImages;
+    const fromIdx = current.findIndex(img => img.id === dragImageId);
+    const toIdx = current.findIndex(img => img.id === dropTargetId);
+    if (fromIdx < 0 || toIdx < 0) {
+      setDragImageId(null);
+      setDragOverImageId(null);
+      return;
+    }
+    const next = [...current];
+    const [moved] = next.splice(fromIdx, 1);
+    next.splice(toIdx, 0, moved);
+    setDragImageId(null);
+    setDragOverImageId(null);
+    void reorderImages(next);
+  }
+
+  function handleMoveImage(imageId: string, direction: -1 | 1) {
+    if (reordering) return;
+    const current = selectedImages;
+    const idx = current.findIndex(img => img.id === imageId);
+    const targetIdx = idx + direction;
+    if (idx < 0 || targetIdx < 0 || targetIdx >= current.length) return;
+    const next = [...current];
+    const [moved] = next.splice(idx, 1);
+    next.splice(targetIdx, 0, moved);
+    void reorderImages(next);
   }
 
   function getProjectName(id: string) {
@@ -225,26 +320,20 @@ export default function AdminMediaPage() {
     <div className="admin-layout page-shell" style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: '24px', paddingBottom: '48px' }}>
       <AdminSidebar />
       <section style={{ display: 'grid', gap: '20px' }}>
-        {success && (
-          <div style={{ padding: '10px 16px', background: 'rgba(74,222,128,0.15)', border: '1px solid rgba(74,222,128,0.3)', borderRadius: '8px', color: 'rgba(74,222,128,0.9)', fontSize: '0.875rem' }}>
-            ✓ {success}
-          </div>
-        )}
-        {error && (
-          <div style={{ padding: '10px 16px', background: 'rgba(255,107,107,0.15)', border: '1px solid rgba(255,107,107,0.3)', borderRadius: '8px', color: 'rgba(255,107,107,0.9)', fontSize: '0.875rem' }}>
-            ✗ {error}
-          </div>
-        )}
-
         <div className="panel" style={{ padding: '24px', display: 'grid', gap: '12px' }}>
           <h1 className="section-title">媒体管理</h1>
-          <select value={projectId} onChange={e => setProjectId(e.target.value)} disabled={saving}>
+          <select value={projectId} onChange={e => { setProjectId(e.target.value); setLocationId(''); }} disabled={saving}>
             <option value="">选择所属项目</option>
             {projects.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
           </select>
-          <select value={locationId} onChange={e => setLocationId(e.target.value)} disabled={saving}>
+          <select
+            value={locationId}
+            onChange={e => setLocationId(e.target.value)}
+            disabled={saving || !projectId}
+            data-testid="mediaset-location-select"
+          >
             <option value="">不绑定主地点</option>
-            {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+            {locationsForProject.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
           </select>
           <input value={title} onChange={e => setTitle(e.target.value)} placeholder="媒体组标题" disabled={saving} />
           <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="媒体组描述，可留空" disabled={saving} />
@@ -296,11 +385,11 @@ export default function AdminMediaPage() {
                       <button onClick={() => setSelectedMediaSetId(ms.id)}>管理图片</button>
                       <button onClick={() => startEdit(ms)}>编辑</button>
                       <button
-                        onClick={() => handleDeleteMediaSet(ms.id)}
-                        disabled={deletingIds.has(ms.id)}
-                        style={deletingIds.has(ms.id) ? { opacity: 0.5 } : { background: 'var(--danger)' }}
+                        onClick={() => requestDeleteMediaSet(ms)}
+                        data-testid={`mediaset-delete-${ms.id}`}
+                        style={{ background: 'var(--danger)' }}
                       >
-                        {deletingIds.has(ms.id) ? '删除中...' : '删除'}
+                        删除
                       </button>
                     </div>
                   </div>
@@ -356,28 +445,109 @@ export default function AdminMediaPage() {
           )}
 
           <div style={{ display: 'grid', gap: '12px', marginTop: '8px' }}>
-            {selectedImages.map(image => (
-              <div key={image.id} className="panel" style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
-                <div>
+            {selectedImages.map((image, index) => (
+              <div
+                key={image.id}
+                className="panel"
+                draggable
+                onDragStart={() => handleDragStart(image.id)}
+                onDragOver={e => handleDragOver(e, image.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={e => handleDrop(e, image.id)}
+                data-testid={`media-image-row-${image.id}`}
+                data-dragging={dragImageId === image.id ? 'true' : 'false'}
+                data-drop-target={dragOverImageId === image.id ? 'true' : 'false'}
+                style={{
+                  padding: '16px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  gap: '12px',
+                  opacity: dragImageId === image.id ? 0.5 : 1,
+                  borderColor: dragOverImageId === image.id ? 'var(--accent)' : undefined,
+                  cursor: 'grab',
+                }}
+              >
+                <div style={{ flex: 1 }}>
                   <div>{image.caption || image.alt_text}</div>
                   <div className="muted">
                     顺序：{image.sort_order}
                     {image.latitude && image.longitude && <span> · {image.latitude}, {image.longitude}</span>}
                   </div>
                 </div>
-                <button
-                  onClick={() => handleDeleteImage(image.id)}
-                  disabled={deletingIds.has(image.id)}
-                  style={deletingIds.has(image.id) ? { opacity: 0.5 } : { background: 'var(--danger)' }}
-                >
-                  {deletingIds.has(image.id) ? '删除中...' : '删除'}
-                </button>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button
+                    type="button"
+                    onClick={() => handleMoveImage(image.id, -1)}
+                    disabled={index === 0 || reordering}
+                    data-testid={`media-image-up-${image.id}`}
+                    aria-label="上移"
+                    style={{ padding: '6px 10px' }}
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleMoveImage(image.id, 1)}
+                    disabled={index === selectedImages.length - 1 || reordering}
+                    data-testid={`media-image-down-${image.id}`}
+                    aria-label="下移"
+                    style={{ padding: '6px 10px' }}
+                  >
+                    ↓
+                  </button>
+                  <button
+                    onClick={() => requestDeleteImage(image)}
+                    disabled={imageDeleting}
+                    data-testid={`media-image-delete-${image.id}`}
+                    style={{ background: 'var(--danger)' }}
+                  >
+                    删除
+                  </button>
+                </div>
               </div>
             ))}
             {selectedImages.length === 0 && selectedMediaSetId && <p className="muted">此媒体组暂无图片</p>}
           </div>
         </div>
       </section>
+
+      <CascadeDeleteDialog<MediaSetCascadePreview>
+        open={cascadeTarget !== null}
+        title="确认删除媒体组"
+        entityName={cascadeTarget?.name ?? ''}
+        loading={cascadeDeleting}
+        errorMessage={cascadeError}
+        loadPreview={() => mediaSetsApi.cascadePreview(cascadeTarget!.id)}
+        renderSummary={preview => (
+          <ul style={{ margin: 0, paddingLeft: '20px', display: 'grid', gap: '4px' }}>
+            <li>媒体图片：<strong>{preview.willDelete.mediaImages}</strong> 张</li>
+          </ul>
+        )}
+        onCancel={() => { if (!cascadeDeleting) setCascadeTarget(null); }}
+        onConfirm={confirmCascadeDelete}
+        confirmLabel="确认删除"
+      />
+
+      <CascadeDeleteDialog<{ image: { id: string; caption: string } }>
+        open={imageDeleteTarget !== null}
+        title="确认删除图片"
+        entityName={imageDeleteTarget?.caption ?? ''}
+        loading={imageDeleting}
+        loadPreview={async () => ({ image: { id: imageDeleteTarget!.id, caption: imageDeleteTarget!.caption } })}
+        renderSummary={() => <span>该图片记录将被永久删除，操作不可撤销。</span>}
+        onCancel={() => { if (!imageDeleting) setImageDeleteTarget(null); }}
+        onConfirm={confirmImageDelete}
+        confirmLabel="确认删除"
+      />
     </div>
+  );
+}
+
+export default function AdminMediaPage() {
+  return (
+    <ToastProvider>
+      <AdminMediaPageInner />
+    </ToastProvider>
   );
 }

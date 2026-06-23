@@ -1,29 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
-import { routesApi, projectsApi, type Route, type Project } from '@/services/api/adminApi';
+import { ToastProvider } from '@/components/common/ToastProvider';
+import { useToast } from '@/components/common/useToast';
+import { CascadeDeleteDialog } from '@/components/common/CascadeDeleteDialog';
+import { routesApi, projectsApi, type Route, type Project, type RouteCascadePreview } from '@/services/api/adminApi';
 
-/**
- * 轨迹管理页面
- *
- * 表单字段说明：
- * - projectId: 所属项目（必填）
- * - name: 轨迹名称（必填）
- * - description: 轨迹描述（选填）
- * - locationIds: 地点 ID 列表（当前为逗号分隔文本，后续改为拖拽排序 UI）
- * - lineStyle: 线型 solid|dashed
- * - color: 轨迹颜色（HEX）
- * - isFeatured: 是否精选
- *
- * 后续扩展方向：
- * - 拖拽式地点顺序调整 UI（替代当前逗号分隔文本）
- * - 地图可视化选点
- * - 轨迹预览
- */
-export default function AdminRoutesPage() {
+interface RouteDeleteState {
+  id: string;
+  name: string;
+}
+
+function AdminRoutesPageInner() {
+  const toast = useToast();
   const [routes, setRoutes] = useState<Route[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [projectId, setProjectId] = useState('');
@@ -33,15 +24,24 @@ export default function AdminRoutesPage() {
   const [lineStyle, setLineStyle] = useState<'solid' | 'dashed'>('solid');
   const [color, setColor] = useState('#72e3d2');
   const [isFeatured, setIsFeatured] = useState(false);
+  const [fieldError, setFieldError] = useState('');
+
+  const [cascadeTarget, setCascadeTarget] = useState<RouteDeleteState | null>(null);
+  const [cascadeDeleting, setCascadeDeleting] = useState(false);
+  const [cascadeError, setCascadeError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
-    const [rts, projs] = await Promise.all([
-      routesApi.list(projectId || undefined),
-      projectsApi.list(),
-    ]);
-    setRoutes(rts);
-    setProjects(projs);
-  }, [projectId]);
+    try {
+      const [rts, projs] = await Promise.all([
+        routesApi.list(projectId || undefined),
+        projectsApi.list(),
+      ]);
+      setRoutes(rts);
+      setProjects(projs);
+    } catch {
+      toast.error('加载失败');
+    }
+  }, [projectId, toast]);
 
   useEffect(() => {
     setLoading(true);
@@ -57,6 +57,7 @@ export default function AdminRoutesPage() {
     setLineStyle(route.line_style as 'solid' | 'dashed');
     setColor(route.color);
     setIsFeatured(!!route.is_featured);
+    setFieldError('');
   }
 
   function startCreate() {
@@ -68,12 +69,13 @@ export default function AdminRoutesPage() {
     setLineStyle('solid');
     setColor('#72e3d2');
     setIsFeatured(false);
+    setFieldError('');
   }
 
   async function handleSave() {
-    if (!projectId) { setError('请选择所属项目'); return; }
-    if (!name.trim()) { setError('请输入轨迹名称'); return; }
-    setError('');
+    if (!projectId) { setFieldError('请选择所属项目'); return; }
+    if (!name.trim()) { setFieldError('请输入轨迹名称'); return; }
+    setFieldError('');
     try {
       const data = {
         project_id: projectId,
@@ -86,23 +88,35 @@ export default function AdminRoutesPage() {
       };
       if (editingId) {
         await routesApi.update(editingId, data);
+        toast.success('已保存');
       } else {
         await routesApi.create(data);
+        toast.success('已创建');
       }
       await loadData();
       startCreate();
     } catch {
-      setError(editingId ? '保存失败' : '创建失败');
+      toast.error(editingId ? '保存失败' : '创建失败');
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!window.confirm('确认删除这条轨迹吗？')) return;
+  function requestDelete(route: Route) {
+    setCascadeError(null);
+    setCascadeTarget({ id: route.id, name: route.name });
+  }
+
+  async function confirmCascadeDelete() {
+    if (!cascadeTarget) return;
+    setCascadeDeleting(true);
     try {
-      await routesApi.delete(id);
+      await routesApi.delete(cascadeTarget.id);
       await loadData();
-    } catch {
-      setError('删除失败');
+      toast.success('已删除');
+      setCascadeTarget(null);
+    } catch (e) {
+      setCascadeError(e instanceof Error ? e.message : '删除失败');
+    } finally {
+      setCascadeDeleting(false);
     }
   }
 
@@ -128,7 +142,7 @@ export default function AdminRoutesPage() {
             <input type="checkbox" checked={isFeatured} onChange={e => setIsFeatured(e.target.checked)} />
             设为精选轨迹
           </label>
-          {error && <p style={{ color: 'var(--danger)' }}>{error}</p>}
+          {fieldError && <p data-testid="route-field-error" style={{ color: 'var(--danger)' }}>{fieldError}</p>}
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             <button onClick={handleSave}>{editingId ? '保存修改' : '新增轨迹'}</button>
             <button onClick={startCreate}>{editingId ? '取消编辑' : '清空表单'}</button>
@@ -165,7 +179,13 @@ export default function AdminRoutesPage() {
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button onClick={() => startEdit(route)}>编辑</button>
-                      <button onClick={() => handleDelete(route.id)}>删除</button>
+                      <button
+                        onClick={() => requestDelete(route)}
+                        data-testid={`route-delete-${route.id}`}
+                        style={{ background: 'var(--danger)' }}
+                      >
+                        删除
+                      </button>
                     </div>
                   </div>
                 );
@@ -175,6 +195,31 @@ export default function AdminRoutesPage() {
           )}
         </div>
       </section>
+
+      <CascadeDeleteDialog<RouteCascadePreview>
+        open={cascadeTarget !== null}
+        title="确认删除轨迹"
+        entityName={cascadeTarget?.name ?? ''}
+        loading={cascadeDeleting}
+        errorMessage={cascadeError}
+        loadPreview={() => routesApi.cascadePreview(cascadeTarget!.id)}
+        renderSummary={preview => (
+          <ul style={{ margin: 0, paddingLeft: '20px', display: 'grid', gap: '4px' }}>
+            <li>轨迹-地点关联：<strong>{preview.willDelete.routeLocations}</strong> 条</li>
+          </ul>
+        )}
+        onCancel={() => { if (!cascadeDeleting) setCascadeTarget(null); }}
+        onConfirm={confirmCascadeDelete}
+        confirmLabel="确认删除"
+      />
     </div>
+  );
+}
+
+export default function AdminRoutesPage() {
+  return (
+    <ToastProvider>
+      <AdminRoutesPageInner />
+    </ToastProvider>
   );
 }

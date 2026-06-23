@@ -28,6 +28,17 @@ export interface Project {
   updatedAt: string;
 }
 
+export interface ProjectCascadePreview {
+  project: { id: string; title: string };
+  willDelete: {
+    locations: number;
+    mediaSets: number;
+    mediaImages: number;
+    routes: number;
+    routeLocations: number;
+  };
+}
+
 export const projectsApi = {
   list: () => json<Project[]>('/projects'),
   get: (id: string) => json<Project>(`/projects/${id}`),
@@ -36,6 +47,7 @@ export const projectsApi = {
   update: (id: string, data: Partial<{ title: string; summary: string; description: string; status: string; tags: string[] }>) =>
     json<Project>(`/projects/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id: string) => json<void>(`/projects/${id}`, { method: 'DELETE' }),
+  cascadePreview: (id: string) => json<ProjectCascadePreview>(`/projects/${id}/cascade-preview`),
 };
 
 export interface Location {
@@ -52,6 +64,14 @@ export interface Location {
   updated_at: string;
 }
 
+export interface LocationCascadePreview {
+  location: { id: string; name: string };
+  willDelete: {
+    mediaSets: number;
+    mediaImages: number;
+  };
+}
+
 export const locationsApi = {
   list: (projectId?: string) => json<Location[]>(`/locations${projectId ? `?project_id=${projectId}` : ''}`),
   get: (id: string) => json<Location>(`/locations/${id}`),
@@ -60,6 +80,7 @@ export const locationsApi = {
   update: (id: string, data: Partial<{ name: string; description: string; latitude: number; longitude: number; address_text: string; visit_order: number | null }>) =>
     json<Location>(`/locations/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id: string) => json<void>(`/locations/${id}`, { method: 'DELETE' }),
+  cascadePreview: (id: string) => json<LocationCascadePreview>(`/locations/${id}/cascade-preview`),
 };
 
 export interface RouteLocationRow {
@@ -81,6 +102,13 @@ export interface Route {
   updated_at: string;
 }
 
+export interface RouteCascadePreview {
+  route: { id: string; name: string };
+  willDelete: {
+    routeLocations: number;
+  };
+}
+
 export const routesApi = {
   list: (projectId?: string) => json<Route[]>(`/routes${projectId ? `?project_id=${projectId}` : ''}`),
   get: (id: string) => json<Route>(`/routes/${id}`),
@@ -89,6 +117,7 @@ export const routesApi = {
   update: (id: string, data: Partial<{ name: string; description: string; line_style: string; color: string; is_featured: boolean; location_ids: string[] }>) =>
     json<Route>(`/routes/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id: string) => json<void>(`/routes/${id}`, { method: 'DELETE' }),
+  cascadePreview: (id: string) => json<RouteCascadePreview>(`/routes/${id}/cascade-preview`),
 };
 
 export interface MediaSet {
@@ -104,6 +133,13 @@ export interface MediaSet {
   updated_at: string;
 }
 
+export interface MediaSetCascadePreview {
+  mediaSet: { id: string; title: string };
+  willDelete: {
+    mediaImages: number;
+  };
+}
+
 export const mediaSetsApi = {
   list: (projectId?: string) => json<MediaSet[]>(`/media-sets${projectId ? `?project_id=${projectId}` : ''}`),
   get: (id: string) => json<MediaSet>(`/media-sets/${id}`),
@@ -112,6 +148,12 @@ export const mediaSetsApi = {
   update: (id: string, data: Partial<{ location_id: string; type: string; title: string; description: string; is_featured: boolean }>) =>
     json<MediaSet>(`/media-sets/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id: string) => json<void>(`/media-sets/${id}`, { method: 'DELETE' }),
+  cascadePreview: (id: string) => json<MediaSetCascadePreview>(`/media-sets/${id}/cascade-preview`),
+  reorderImages: (mediaSetId: string, imageIds: string[]) =>
+    json<{ images: MediaImage[] }>(`/media-sets/${mediaSetId}/images/order`, {
+      method: 'PUT',
+      body: JSON.stringify({ imageIds }),
+    }),
 };
 
 export interface MediaImage {

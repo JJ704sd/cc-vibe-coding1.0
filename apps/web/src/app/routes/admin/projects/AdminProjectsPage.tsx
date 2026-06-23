@@ -1,43 +1,42 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
+import { ToastProvider } from '@/components/common/ToastProvider';
+import { useToast } from '@/components/common/useToast';
+import { CascadeDeleteDialog } from '@/components/common/CascadeDeleteDialog';
 import {
   projectsApi,
   locationsApi,
   mediaSetsApi,
   routesApi,
   type Project,
+  type ProjectCascadePreview,
 } from '@/services/api/adminApi';
 import { computeProjectReadiness, type ReadinessStatus } from '@/features/admin/projectReadiness';
 
-/**
- * 项目管理页面
- *
- * 表单字段说明：
- * - title: 项目标题（必填）
- * - summary: 项目摘要（必填，用于卡片展示）
- * - description: 项目详细描述（选填）
- * - tags: 标签，英文逗号分隔
- * - status: 状态，draft|published
- *
- * 后续扩展方向：
- * - slug 字段自动生成
- * - coverImage 上传
- * - 富文本编辑器替代 textarea
- */
-export default function AdminProjectsPage() {
+interface ProjectDeleteState {
+  id: string;
+  name: string;
+}
+
+function AdminProjectsPageInner() {
+  const toast = useToast();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
   const [description, setDescription] = useState('');
   const [tagsText, setTagsText] = useState('');
   const [status, setStatus] = useState<'draft' | 'published'>('draft');
+  const [fieldError, setFieldError] = useState('');
 
   const [countsByProject, setCountsByProject] = useState<
     Record<string, { locations: number; mediaSets: number; routes: number }>
   >({});
+
+  const [cascadeTarget, setCascadeTarget] = useState<ProjectDeleteState | null>(null);
+  const [cascadeDeleting, setCascadeDeleting] = useState(false);
+  const [cascadeError, setCascadeError] = useState<string | null>(null);
 
   const loadProjects = useCallback(async () => {
     try {
@@ -69,10 +68,10 @@ export default function AdminProjectsPage() {
         if (entry) entry.routes += 1;
       }
       setCountsByProject(next);
-    } catch (e) {
-      setError('加载失败');
+    } catch {
+      toast.error('加载失败');
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     setLoading(true);
@@ -86,6 +85,7 @@ export default function AdminProjectsPage() {
     setDescription(project.description);
     setTagsText((project.tags || []).join(', '));
     setStatus(project.status as 'draft' | 'published');
+    setFieldError('');
   }
 
   function startCreate() {
@@ -95,12 +95,13 @@ export default function AdminProjectsPage() {
     setDescription('');
     setTagsText('');
     setStatus('draft');
+    setFieldError('');
   }
 
   async function handleSave() {
-    if (!title.trim()) { setError('请输入标题'); return; }
-    if (!summary.trim()) { setError('请输入摘要'); return; }
-    setError('');
+    if (!title.trim()) { setFieldError('请输入标题'); return; }
+    if (!summary.trim()) { setFieldError('请输入摘要'); return; }
+    setFieldError('');
     try {
       const data = {
         title: title.trim(),
@@ -111,23 +112,35 @@ export default function AdminProjectsPage() {
       };
       if (editingId) {
         await projectsApi.update(editingId, data);
+        toast.success('已保存');
       } else {
         await projectsApi.create(data);
+        toast.success('已创建');
       }
       await loadProjects();
       startCreate();
     } catch (e) {
-      setError(editingId ? '保存失败' : '创建失败');
+      toast.error(editingId ? '保存失败' : '创建失败');
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!window.confirm('确认删除这个项目吗？')) return;
+  function requestDelete(project: Project) {
+    setCascadeError(null);
+    setCascadeTarget({ id: project.id, name: project.title });
+  }
+
+  async function confirmCascadeDelete() {
+    if (!cascadeTarget) return;
+    setCascadeDeleting(true);
     try {
-      await projectsApi.delete(id);
+      await projectsApi.delete(cascadeTarget.id);
       await loadProjects();
-    } catch {
-      setError('删除失败');
+      toast.success('已删除');
+      setCascadeTarget(null);
+    } catch (e) {
+      setCascadeError(e instanceof Error ? e.message : '删除失败');
+    } finally {
+      setCascadeDeleting(false);
     }
   }
 
@@ -150,12 +163,17 @@ export default function AdminProjectsPage() {
           <input value={title} onChange={e => setTitle(e.target.value)} placeholder="项目标题" />
           <textarea value={summary} onChange={e => setSummary(e.target.value)} placeholder="项目摘要" />
           <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="项目描述，可留空" />
-          <input value={tagsText} onChange={e => setTagsText(e.target.value)} placeholder="标签，使用英文逗号分隔" />
+          <input
+            value={tagsText}
+            onChange={e => setTagsText(e.target.value)}
+            placeholder="标签，使用英文逗号分隔"
+            data-testid="project-tags-input"
+          />
           <select value={status} onChange={e => setStatus(e.target.value as 'draft' | 'published')}>
             <option value="draft">草稿</option>
             <option value="published">已发布</option>
           </select>
-          {error && <p style={{ color: 'var(--danger)' }}>{error}</p>}
+          {fieldError && <p data-testid="project-field-error" style={{ color: 'var(--danger)' }}>{fieldError}</p>}
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             <button onClick={handleSave}>{editingId ? '保存修改' : '新增项目'}</button>
             <button onClick={startCreate}>{editingId ? '取消编辑' : '清空表单'}</button>
@@ -180,6 +198,7 @@ export default function AdminProjectsPage() {
                     : readiness.status === 'incomplete'
                     ? '已发布 · 未完整'
                     : '草稿';
+                const tags = project.tags || [];
                 return (
                   <div key={project.id} className="panel" style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
                     <div style={{ flex: '1 1 320px' }}>
@@ -193,6 +212,27 @@ export default function AdminProjectsPage() {
                         </span>
                       </div>
                       <div className="muted">{project.summary}</div>
+                      {tags.length > 0 && (
+                        <div
+                          data-testid={`project-tags-${project.id}`}
+                          style={{ marginTop: '6px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}
+                        >
+                          {tags.map(tag => (
+                            <span
+                              key={tag}
+                              style={{
+                                fontSize: '0.7rem',
+                                padding: '2px 8px',
+                                borderRadius: '999px',
+                                background: 'rgba(91,141,238,0.15)',
+                                color: 'rgba(123,167,255,0.95)',
+                              }}
+                            >
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       {readiness.status === 'incomplete' && (
                         <div data-testid={`project-readiness-missing-${project.id}`} style={{ marginTop: '6px', fontSize: '0.8rem', color: 'rgba(255,107,107,0.95)' }}>
                           发布前请补齐：{readiness.missing.join('、')}
@@ -201,7 +241,13 @@ export default function AdminProjectsPage() {
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button onClick={() => startEdit(project)}>编辑</button>
-                      <button onClick={() => handleDelete(project.id)}>删除</button>
+                      <button
+                        onClick={() => requestDelete(project)}
+                        data-testid={`project-delete-${project.id}`}
+                        style={{ background: 'var(--danger)' }}
+                      >
+                        删除
+                      </button>
                     </div>
                   </div>
                 );
@@ -211,6 +257,35 @@ export default function AdminProjectsPage() {
           )}
         </div>
       </section>
+
+      <CascadeDeleteDialog<ProjectCascadePreview>
+        open={cascadeTarget !== null}
+        title="确认删除项目"
+        entityName={cascadeTarget?.name ?? ''}
+        loading={cascadeDeleting}
+        errorMessage={cascadeError}
+        loadPreview={() => projectsApi.cascadePreview(cascadeTarget!.id)}
+        renderSummary={preview => (
+          <ul style={{ margin: 0, paddingLeft: '20px', display: 'grid', gap: '4px' }}>
+            <li>地点：<strong>{preview.willDelete.locations}</strong> 个</li>
+            <li>媒体组：<strong>{preview.willDelete.mediaSets}</strong> 个</li>
+            <li>媒体图片：<strong>{preview.willDelete.mediaImages}</strong> 张</li>
+            <li>轨迹：<strong>{preview.willDelete.routes}</strong> 条</li>
+            <li>轨迹-地点关联：<strong>{preview.willDelete.routeLocations}</strong> 条</li>
+          </ul>
+        )}
+        onCancel={() => { if (!cascadeDeleting) setCascadeTarget(null); }}
+        onConfirm={confirmCascadeDelete}
+        confirmLabel="确认删除"
+      />
     </div>
+  );
+}
+
+export default function AdminProjectsPage() {
+  return (
+    <ToastProvider>
+      <AdminProjectsPageInner />
+    </ToastProvider>
   );
 }

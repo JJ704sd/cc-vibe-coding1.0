@@ -1,29 +1,26 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
-import { locationsApi, projectsApi, type Location, type Project } from '@/services/api/adminApi';
+import { ToastProvider } from '@/components/common/ToastProvider';
+import { useToast } from '@/components/common/useToast';
+import { CascadeDeleteDialog } from '@/components/common/CascadeDeleteDialog';
+import {
+  locationsApi,
+  projectsApi,
+  type Location,
+  type Project,
+  type LocationCascadePreview,
+} from '@/services/api/adminApi';
 
-/**
- * 地点管理页面
- *
- * 表单字段说明：
- * - projectId: 所属项目（必填）
- * - name: 地点名称（必填）
- * - description: 地点描述（选填）
- * - latitude: 纬度（必填，必须显式录入）
- * - longitude: 经度（必填，必须显式录入）
- * - addressText: 地址说明
- * - visitOrder: 访问顺序（选填，辅助字段）
- *
- * 后续扩展方向：
- * - 地图选点交互（点击地图自动填入经纬度）
- * - 地址自动地理编码
- * - 地点关联多个媒体组
- */
-export default function AdminLocationsPage() {
+interface LocationDeleteState {
+  id: string;
+  name: string;
+}
+
+function AdminLocationsPageInner() {
+  const toast = useToast();
   const [locations, setLocations] = useState<Location[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [projectId, setProjectId] = useState('');
@@ -33,15 +30,24 @@ export default function AdminLocationsPage() {
   const [longitudeText, setLongitudeText] = useState('');
   const [addressText, setAddressText] = useState('');
   const [visitOrderText, setVisitOrderText] = useState('');
+  const [fieldError, setFieldError] = useState('');
+
+  const [cascadeTarget, setCascadeTarget] = useState<LocationDeleteState | null>(null);
+  const [cascadeDeleting, setCascadeDeleting] = useState(false);
+  const [cascadeError, setCascadeError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
-    const [locs, projs] = await Promise.all([
-      locationsApi.list(projectId || undefined),
-      projectsApi.list(),
-    ]);
-    setLocations(locs);
-    setProjects(projs);
-  }, [projectId]);
+    try {
+      const [locs, projs] = await Promise.all([
+        locationsApi.list(projectId || undefined),
+        projectsApi.list(),
+      ]);
+      setLocations(locs);
+      setProjects(projs);
+    } catch {
+      toast.error('加载失败');
+    }
+  }, [projectId, toast]);
 
   useEffect(() => {
     setLoading(true);
@@ -57,6 +63,7 @@ export default function AdminLocationsPage() {
     setLongitudeText(String(loc.longitude));
     setAddressText(loc.address_text);
     setVisitOrderText(loc.visit_order !== null ? String(loc.visit_order) : '');
+    setFieldError('');
   }
 
   function startCreate() {
@@ -68,14 +75,15 @@ export default function AdminLocationsPage() {
     setLongitudeText('');
     setAddressText('');
     setVisitOrderText('');
+    setFieldError('');
   }
 
   async function handleSave() {
-    if (!projectId) { setError('请选择所属项目'); return; }
-    if (!name.trim()) { setError('请输入地点名称'); return; }
-    if (!latitudeText) { setError('请输入纬度'); return; }
-    if (!longitudeText) { setError('请输入经度'); return; }
-    setError('');
+    if (!projectId) { setFieldError('请选择所属项目'); return; }
+    if (!name.trim()) { setFieldError('请输入地点名称'); return; }
+    if (!latitudeText) { setFieldError('请输入纬度'); return; }
+    if (!longitudeText) { setFieldError('请输入经度'); return; }
+    setFieldError('');
     try {
       const data = {
         project_id: projectId,
@@ -88,23 +96,35 @@ export default function AdminLocationsPage() {
       };
       if (editingId) {
         await locationsApi.update(editingId, data);
+        toast.success('已保存');
       } else {
         await locationsApi.create(data);
+        toast.success('已创建');
       }
       await loadData();
       startCreate();
     } catch {
-      setError(editingId ? '保存失败' : '创建失败');
+      toast.error(editingId ? '保存失败' : '创建失败');
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!window.confirm('确认删除这个地点吗？')) return;
+  function requestDelete(loc: Location) {
+    setCascadeError(null);
+    setCascadeTarget({ id: loc.id, name: loc.name });
+  }
+
+  async function confirmCascadeDelete() {
+    if (!cascadeTarget) return;
+    setCascadeDeleting(true);
     try {
-      await locationsApi.delete(id);
+      await locationsApi.delete(cascadeTarget.id);
       await loadData();
-    } catch {
-      setError('删除失败');
+      toast.success('已删除');
+      setCascadeTarget(null);
+    } catch (e) {
+      setCascadeError(e instanceof Error ? e.message : '删除失败');
+    } finally {
+      setCascadeDeleting(false);
     }
   }
 
@@ -124,7 +144,7 @@ export default function AdminLocationsPage() {
           <input value={longitudeText} onChange={e => setLongitudeText(e.target.value)} placeholder="经度" />
           <input value={addressText} onChange={e => setAddressText(e.target.value)} placeholder="地址说明" />
           <input value={visitOrderText} onChange={e => setVisitOrderText(e.target.value)} placeholder="访问顺序，可留空" />
-          {error && <p style={{ color: 'var(--danger)' }}>{error}</p>}
+          {fieldError && <p data-testid="location-field-error" style={{ color: 'var(--danger)' }}>{fieldError}</p>}
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             <button onClick={handleSave}>{editingId ? '保存修改' : '新增地点'}</button>
             <button onClick={startCreate}>{editingId ? '取消编辑' : '清空表单'}</button>
@@ -143,7 +163,13 @@ export default function AdminLocationsPage() {
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button onClick={() => startEdit(loc)}>编辑</button>
-                    <button onClick={() => handleDelete(loc.id)}>删除</button>
+                    <button
+                      onClick={() => requestDelete(loc)}
+                      data-testid={`location-delete-${loc.id}`}
+                      style={{ background: 'var(--danger)' }}
+                    >
+                      删除
+                    </button>
                   </div>
                 </div>
               ))}
@@ -152,6 +178,32 @@ export default function AdminLocationsPage() {
           )}
         </div>
       </section>
+
+      <CascadeDeleteDialog<LocationCascadePreview>
+        open={cascadeTarget !== null}
+        title="确认删除地点"
+        entityName={cascadeTarget?.name ?? ''}
+        loading={cascadeDeleting}
+        errorMessage={cascadeError}
+        loadPreview={() => locationsApi.cascadePreview(cascadeTarget!.id)}
+        renderSummary={preview => (
+          <ul style={{ margin: 0, paddingLeft: '20px', display: 'grid', gap: '4px' }}>
+            <li>关联媒体组：<strong>{preview.willDelete.mediaSets}</strong> 个</li>
+            <li>关联媒体图片：<strong>{preview.willDelete.mediaImages}</strong> 张</li>
+          </ul>
+        )}
+        onCancel={() => { if (!cascadeDeleting) setCascadeTarget(null); }}
+        onConfirm={confirmCascadeDelete}
+        confirmLabel="确认删除"
+      />
     </div>
+  );
+}
+
+export default function AdminLocationsPage() {
+  return (
+    <ToastProvider>
+      <AdminLocationsPageInner />
+    </ToastProvider>
   );
 }
