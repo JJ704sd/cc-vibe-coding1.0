@@ -19,8 +19,15 @@ export function ProjectDetailPage() {
   const project = data?.project;
   const locations = data?.locations ?? [];
   const mediaSets = data?.mediaSets ?? [];
-  const [selectedLocationId, setSelectedLocationId] = useState(locations[0]?.id ?? null);
-  const selectedLocation = locations.find((location) => location.id === selectedLocationId) ?? null;
+  // Derived (not useState) so the default re-evaluates each render: when the
+  // page mounts while data is still loading, useState(locations[0]?.id ?? null)
+  // would lock the initial state to null and then never pick up the first
+  // location after the fetch resolves. Falling back at the read site keeps the
+  // explicit click-to-select behavior intact while always showing the first
+  // location by default.
+  const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
+  const effectiveLocationId = selectedLocationId ?? locations[0]?.id ?? null;
+  const selectedLocation = locations.find((location) => location.id === effectiveLocationId) ?? null;
   const breadcrumbTitle = useMemo(() => project?.title ?? '项目', [project?.title]);
 
   if (loading) {
