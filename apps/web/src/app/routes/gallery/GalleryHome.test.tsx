@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 
 const source = fs.readFileSync('src/app/routes/gallery/GalleryHome.tsx', 'utf-8');
+const railSource = fs.readFileSync('src/app/routes/gallery/GalleryMediaRail.tsx', 'utf-8');
 
 describe('GalleryHome', () => {
   it('contains GalleryExperience', () => {
@@ -27,7 +28,9 @@ describe('GalleryHome', () => {
   });
 
   it('renders selected media inside a dedicated map rail instead of floating cards', () => {
-    expect(source).toContain('data-testid="gallery-media-rail"');
+    // GalleryHome now delegates the rail body to GalleryMediaRail; the testid
+    // contract lives in that extracted component file.
+    expect(railSource).toContain('data-testid="gallery-media-rail"');
     expect(source).not.toContain('data-testid="map-floating-card"');
     expect(source).not.toContain('floatingCards');
   });
