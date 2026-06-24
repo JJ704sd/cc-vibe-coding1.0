@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { httpJson } from '@/services/api/httpClient';
 import type { MediaImage } from '@/types/domain';
 
@@ -16,11 +16,19 @@ export type PublicMediaSet = {
 
 export function usePublicMediaSet({
   mediaSetId,
-  fetcher = (url: string) => httpJson<PublicMediaSet>(url),
+  fetcher: fetcherProp,
 }: {
   mediaSetId: string;
   fetcher?: (url: string) => Promise<PublicMediaSet>;
 }) {
+  // Default fetcher must be stable across renders; otherwise the effect
+  // refires on every parent re-render (Vite HMR, any state update).
+  const defaultFetcher = useCallback(
+    (url: string) => httpJson<PublicMediaSet>(url),
+    [],
+  );
+  const fetcher = fetcherProp ?? defaultFetcher;
+
   const [data, setData] = useState<PublicMediaSet | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);

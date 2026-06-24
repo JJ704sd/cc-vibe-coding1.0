@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { httpJson } from '@/services/api/httpClient';
 import type { Location, MediaSet, RouteEntity } from '@/types/domain';
 
@@ -20,11 +20,19 @@ export type PublicProjectDetail = {
 
 export function usePublicProjectDetail({
   projectIdOrSlug,
-  fetcher = (url: string) => httpJson<PublicProjectDetail>(url),
+  fetcher: fetcherProp,
 }: {
   projectIdOrSlug: string;
   fetcher?: (url: string) => Promise<PublicProjectDetail>;
 }) {
+  // Default fetcher must be stable across renders; otherwise the effect
+  // refires on every parent re-render (Vite HMR, any state update).
+  const defaultFetcher = useCallback(
+    (url: string) => httpJson<PublicProjectDetail>(url),
+    [],
+  );
+  const fetcher = fetcherProp ?? defaultFetcher;
+
   const [data, setData] = useState<PublicProjectDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
