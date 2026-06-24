@@ -21,8 +21,11 @@ export type LocationRow = {
   name: string;
   slug: string;
   description: string;
-  latitude: number;
-  longitude: number;
+  // mysql2 returns DECIMAL columns as strings (to preserve precision); the
+  // public service converts to number at the boundary so the wire contract
+  // stays `number`. Don't use these directly as numbers in callers.
+  latitude: string;
+  longitude: string;
   address_text: string;
   visit_order: number | null;
   created_at: string;
