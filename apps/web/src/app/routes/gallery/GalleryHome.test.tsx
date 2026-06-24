@@ -3,6 +3,7 @@ import fs from 'node:fs';
 
 const source = fs.readFileSync('src/app/routes/gallery/GalleryHome.tsx', 'utf-8');
 const railSource = fs.readFileSync('src/app/routes/gallery/GalleryMediaRail.tsx', 'utf-8');
+const topBarSource = fs.readFileSync('src/app/routes/gallery/GalleryTopBar.tsx', 'utf-8');
 
 describe('GalleryHome', () => {
   it('contains GalleryExperience', () => {
@@ -40,9 +41,10 @@ describe('GalleryHome', () => {
   });
 
   it('adds aria labels to the primary map controls', () => {
-    expect(source).toContain('aria-label={showSearch ? \'Hide map search\' : \'Show map search\'}');
-    expect(source).toContain('aria-label={isMapMode ? \'Switch to gallery view\' : \'Switch to map view\'}');
-    expect(source).toContain('aria-label={nightMode ? \'Switch to day mode\' : \'Switch to night mode\'}');
+    // The controls are now in the extracted GalleryTopBar component.
+    expect(topBarSource).toContain('aria-label={showSearch ? \'Hide map search\' : \'Show map search\'}');
+    expect(topBarSource).toContain('aria-label={isMapMode ? \'Switch to gallery view\' : \'Switch to map view\'}');
+    expect(topBarSource).toContain('aria-label={nightMode ? \'Switch to day mode\' : \'Switch to night mode\'}');
   });
 
   it('preloads gallery media in parallel so the gallery view is not empty on first load', () => {
