@@ -118,7 +118,7 @@ export function ProjectsPage() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))',
             gap: '32px',
             maxWidth: '1400px',
             margin: '0 auto',

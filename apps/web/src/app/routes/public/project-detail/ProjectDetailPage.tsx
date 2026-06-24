@@ -121,7 +121,7 @@ export function ProjectDetailPage() {
         <p className="muted mt-4" style={{ lineHeight: 1.7, fontFamily: "'Work Sans', sans-serif" }}>{project.description}</p>
       </section>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '24px' }}>
         <LocationDetailPanel location={selectedLocation} />
         {locations.length > 0 && (
           <div className="glass" style={{
