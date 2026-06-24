@@ -10,6 +10,12 @@ export default defineConfig({
     },
   },
   server: {
+    // Bind explicitly to IPv4 loopback so http://127.0.0.1:5173 works.
+    // Default `localhost` resolves to IPv6 first on Windows hosts, which
+    // would silently route the request to a different socket than the
+    // 127.0.0.1:4000 the proxy target uses (cf. .planning/gallery-home-
+    // visual-review/findings.md).
+    host: '127.0.0.1',
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:4000',
