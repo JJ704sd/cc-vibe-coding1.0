@@ -11,69 +11,10 @@ import { GalleryImageModal } from './GalleryImageModal';
 import { GalleryMediaRail } from './GalleryMediaRail';
 import { GalleryTopBar } from './GalleryTopBar';
 import { GalleryRelationshipPanel } from './GalleryRelationshipPanel';
+import { fetchLocationImages, type PublicMediaImage } from './locationImages';
 import { useMapRelationshipData } from '@/features/map/api/useMapRelationshipData';
 import { useProjectedMapGraph } from '@/features/map/projection/useProjectedMapGraph';
-import { httpJson } from '@/services/api/httpClient';
 import type { MediaImage } from '@/types/domain';
-
-export interface PublicMediaImage extends MediaImage {
-  url: string;
-  mimeType?: string;
-}
-
-interface MediaSetWithImages {
-  id: string;
-  type: string;
-  title: string;
-  description: string;
-  coverImage: string | null;
-  locationId: string | null;
-  isFeatured: boolean;
-  images: Array<{
-    id: string;
-    caption: string;
-    sortOrder: number;
-    url: string | null;
-    mimeType: string | null;
-  }>;
-}
-
-async function fetchLocationImages(
-  locationId: string,
-  nodes: Array<{ id: string; mediaSetIds: string[] }>,
-): Promise<PublicMediaImage[]> {
-  const location = nodes.find((node) => node.id === locationId);
-  if (!location) return [];
-
-  const images: PublicMediaImage[] = [];
-
-  for (const mediaSetId of location.mediaSetIds) {
-    try {
-      const response = await httpJson<MediaSetWithImages>(`/public/media-sets/${mediaSetId}`);
-
-      for (const image of response.images) {
-        if (!image.url) continue;
-
-        images.push({
-          id: image.id,
-          mediaSetId,
-          url: image.url,
-          thumbnailUrl: image.url,
-          altText: image.caption,
-          caption: image.caption,
-          sortOrder: image.sortOrder,
-          latitude: undefined,
-          longitude: undefined,
-          createdAt: '',
-        });
-      }
-    } catch {
-      // Skip media sets that fail to load so the rest of the location can still render.
-    }
-  }
-
-  return images;
-}
 
 export function GalleryHome() {
   const [viewMode, setViewMode] = useState<'gallery' | 'map'>('gallery');

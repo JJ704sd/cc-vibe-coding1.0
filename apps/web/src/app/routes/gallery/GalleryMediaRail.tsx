@@ -1,5 +1,5 @@
 import type { MediaImage } from '@/types/domain';
-import type { PublicMediaImage } from './GalleryHome';
+import type { PublicMediaImage } from './locationImages';
 
 export interface GalleryMediaRailProps {
   /** Day/night mode drives all of the rail's color tokens. */

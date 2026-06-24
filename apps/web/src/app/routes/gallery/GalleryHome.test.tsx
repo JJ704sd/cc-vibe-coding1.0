@@ -5,6 +5,7 @@ const source = fs.readFileSync('src/app/routes/gallery/GalleryHome.tsx', 'utf-8'
 const railSource = fs.readFileSync('src/app/routes/gallery/GalleryMediaRail.tsx', 'utf-8');
 const topBarSource = fs.readFileSync('src/app/routes/gallery/GalleryTopBar.tsx', 'utf-8');
 const panelSource = fs.readFileSync('src/app/routes/gallery/GalleryRelationshipPanel.tsx', 'utf-8');
+const locationImagesSource = fs.readFileSync('src/app/routes/gallery/locationImages.ts', 'utf-8');
 
 describe('GalleryHome', () => {
   it('contains GalleryExperience', () => {
@@ -26,7 +27,8 @@ describe('GalleryHome', () => {
   });
 
   it('uses API to fetch published media images', () => {
-    expect(source).toMatch(/httpJson.*public\/media-sets/);
+    // The fetch helper moved to locationImages.ts; the contract lives there now.
+    expect(locationImagesSource).toMatch(/httpJson.*public\/media-sets/);
   });
 
   it('renders selected media inside a dedicated map rail instead of floating cards', () => {
