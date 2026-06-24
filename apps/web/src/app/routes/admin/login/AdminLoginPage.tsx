@@ -33,7 +33,7 @@ export function AdminLoginPage() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: '#0f0f1a' }}>
-      <div style={{ padding: '40px', maxWidth: '420px', width: '100%', background: 'rgba(18,18,28,0.95)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px' }}>
+      <div className="panel" style={{ padding: '40px', maxWidth: '420px', width: '100%' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🔐</div>
           <h1 className="section-title">管理员登录</h1>
