@@ -135,11 +135,14 @@ button, input, textarea, select {
   margin: 0 auto;
 }
 
-/* === Panel (Admin dark card) === */
+/* === Panel (Glass card used by admin pages and dialogs) === */
 .panel {
-  background: rgba(18, 18, 28, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--glass-bg-strong);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-md);
+  box-shadow: var(--shadow-2);
 }
 
 /* === Admin Layout === */
