@@ -4,6 +4,7 @@ import fs from 'node:fs';
 const source = fs.readFileSync('src/app/routes/gallery/GalleryHome.tsx', 'utf-8');
 const railSource = fs.readFileSync('src/app/routes/gallery/GalleryMediaRail.tsx', 'utf-8');
 const topBarSource = fs.readFileSync('src/app/routes/gallery/GalleryTopBar.tsx', 'utf-8');
+const panelSource = fs.readFileSync('src/app/routes/gallery/GalleryRelationshipPanel.tsx', 'utf-8');
 
 describe('GalleryHome', () => {
   it('contains GalleryExperience', () => {
@@ -37,7 +38,8 @@ describe('GalleryHome', () => {
   });
 
   it('adds an explicit shell for the relationship panel overlay', () => {
-    expect(source).toContain('data-testid="gallery-relationship-shell"');
+    // The shell lives in the extracted GalleryRelationshipPanel component.
+    expect(panelSource).toContain('data-testid="gallery-relationship-shell"');
   });
 
   it('adds aria labels to the primary map controls', () => {

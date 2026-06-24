@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useMemo, useDeferredValue } from 'rea
 import type { Map as MaplibreMap } from 'maplibre-gl';
 import {
   MapBase3DView,
-  MapRelationshipPanel,
   MediaClusterLayer,
   MapProjectionOverlay,
 } from '@/components/map';
@@ -11,6 +10,7 @@ import { LoadingScreen } from '@/components/gallery/LoadingScreen';
 import { GalleryImageModal } from './GalleryImageModal';
 import { GalleryMediaRail } from './GalleryMediaRail';
 import { GalleryTopBar } from './GalleryTopBar';
+import { GalleryRelationshipPanel } from './GalleryRelationshipPanel';
 import { useMapRelationshipData } from '@/features/map/api/useMapRelationshipData';
 import { useProjectedMapGraph } from '@/features/map/projection/useProjectedMapGraph';
 import { httpJson } from '@/services/api/httpClient';
@@ -400,42 +400,16 @@ export function GalleryHome() {
       </div>
 
       {isMapMode && showGalleryPanel && (
-        <div
-          data-testid="gallery-relationship-shell"
-          style={{
-            position: 'fixed',
-            top: 'max(84px, calc(env(safe-area-inset-top) + 72px))',
-            right: 'max(16px, calc(env(safe-area-inset-right) + 16px))',
-            width: 'min(360px, calc(100vw - 32px))',
-            maxHeight: showMediaRail ? 'calc(100vh - 320px)' : 'calc(100vh - 160px)',
-            zIndex: 42,
-            pointerEvents: 'none',
-          }}
-        >
-          <div
-            style={{
-              pointerEvents: 'auto',
-              maxHeight: '100%',
-              overflowY: 'auto',
-              borderRadius: '24px',
-              background: nightMode ? 'rgba(7, 10, 20, 0.72)' : 'rgba(255,255,255,0.82)',
-              border: `1px solid ${nightMode ? 'rgba(160,190,255,0.18)' : 'rgba(15,23,42,0.08)'}`,
-              boxShadow: nightMode
-                ? '0 24px 60px rgba(0,0,0,0.34)'
-                : '0 24px 48px rgba(38,57,88,0.16)',
-              backdropFilter: 'blur(20px)',
-            }}
-          >
-            <MapRelationshipPanel
-              title={activeNode?.title ?? activeProject?.title ?? 'Map relationships'}
-              summary={activeNode?.description ?? activeProject?.summary ?? 'Select a node to inspect the connected media and location context.'}
-              onClose={() => setShowGalleryPanel(false)}
-              images={showMediaRail ? undefined : currentImages}
-              loadingImages={showMediaRail ? false : loadingImages}
-              onImageSelect={handleImageSelect}
-            />
-          </div>
-        </div>
+        <GalleryRelationshipPanel
+          nightMode={nightMode}
+          showMediaRail={showMediaRail}
+          title={activeNode?.title ?? activeProject?.title ?? 'Map relationships'}
+          summary={activeNode?.description ?? activeProject?.summary ?? 'Select a node to inspect the connected media and location context.'}
+          images={showMediaRail ? undefined : currentImages}
+          loadingImages={showMediaRail ? false : loadingImages}
+          onClose={() => setShowGalleryPanel(false)}
+          onImageSelect={handleImageSelect}
+        />
       )}
 
       {selectedImage && (
