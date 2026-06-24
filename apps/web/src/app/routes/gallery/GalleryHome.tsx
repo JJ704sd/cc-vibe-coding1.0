@@ -14,6 +14,7 @@ import { GalleryRelationshipPanel } from './GalleryRelationshipPanel';
 import { fetchLocationImages, type PublicMediaImage } from './locationImages';
 import { useMapRelationshipData } from '@/features/map/api/useMapRelationshipData';
 import { useProjectedMapGraph } from '@/features/map/projection/useProjectedMapGraph';
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import type { MediaImage } from '@/types/domain';
 
 export function GalleryHome() {
@@ -37,6 +38,7 @@ export function GalleryHome() {
   const activeProjectId = relationshipData.projectGroups[0]?.projectId ?? null;
   const isMapMode = viewMode === 'map';
   const deferredSearchQuery = useDeferredValue(searchQuery);
+  const isMobileViewport = useMediaQuery('(max-width: 760px)');
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -350,6 +352,7 @@ export function GalleryHome() {
           loadingImages={showMediaRail ? false : loadingImages}
           onClose={() => setShowGalleryPanel(false)}
           onImageSelect={handleImageSelect}
+          isMobile={isMobileViewport}
         />
       )}
 

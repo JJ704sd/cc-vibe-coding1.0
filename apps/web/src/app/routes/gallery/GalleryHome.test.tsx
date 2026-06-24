@@ -40,8 +40,26 @@ describe('GalleryHome', () => {
   });
 
   it('adds an explicit shell for the relationship panel overlay', () => {
-    // The shell lives in the extracted GalleryRelationshipPanel component.
+    // Desktop shell + mobile drawer both live in the extracted
+    // GalleryRelationshipPanel component. The page picks the variant via
+    // the useMediaQuery hook (see "switches relationship panel layout at
+    // the mobile breakpoint" below).
     expect(panelSource).toContain('data-testid="gallery-relationship-shell"');
+    expect(panelSource).toContain('data-testid="gallery-relationship-drawer"');
+  });
+
+  it('switches relationship panel layout at the mobile breakpoint', () => {
+    // useMediaQuery lives in lib/hooks; GalleryHome wires the breakpoint
+    // and passes the result as isMobile to GalleryRelationshipPanel.
+    const hookSource = fs.readFileSync('src/lib/hooks/useMediaQuery.ts', 'utf-8');
+    expect(hookSource).toContain('window.matchMedia');
+    expect(source).toContain('useMediaQuery');
+    expect(source).toContain('isMobileViewport');
+    expect(source).toContain('isMobile={isMobileViewport}');
+    // Breakpoint literal lives next to the hook call site in GalleryHome.
+    expect(source).toMatch(/max-width:\s*760px/);
+    // Panel component branches on the isMobile prop.
+    expect(panelSource).toContain('isMobile');
   });
 
   it('adds aria labels to the primary map controls', () => {
