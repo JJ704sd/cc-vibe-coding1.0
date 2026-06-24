@@ -80,7 +80,7 @@ export function loadConfigFrom(env: EnvSource): AppConfig {
     trustProxy: readBoolean(env.TRUST_PROXY, true),
     logLevel: (env.LOG_LEVEL ?? 'info') as AppConfig['logLevel'],
     bodyLimitBytes: readNumber(env.BODY_LIMIT_BYTES, 10 * 1024 * 1024),
-    rateLimitMax: readNumber(env.RATE_LIMIT_MAX, 60),
+    rateLimitMax: readNumber(env.RATE_LIMIT_MAX, 300),
     rateLimitWindowMs: readNumber(env.RATE_LIMIT_WINDOW_MS, 60_000),
   };
 }
