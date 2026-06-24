@@ -482,7 +482,15 @@ label {
   box-shadow: 0 28px 60px rgba(4, 9, 20, 0.24);
 }
 
-.map-page-base {
+/* map-page-base itself + its maplibre descendants. Use the compound
+   selector (`.map-page-base.maplibregl-map`, specificity 0,2,0) on the
+   element rule because maplibre's own `.maplibregl-map { position: relative }`
+   rule (specificity 0,1,0) loads after our CSS via the JS import and would
+   otherwise out-rank our `position: absolute` by source order. Without this
+   the base element stays position:relative height:0 and the whole map
+   stage renders as an empty rectangle. */
+.map-page-base,
+.map-page-base.maplibregl-map {
   position: absolute;
   inset: 0;
 }
