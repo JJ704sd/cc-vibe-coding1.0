@@ -87,6 +87,58 @@ Sprint 2 验证终态:
 
 后续按用户视觉反馈决定：(a) 整体回滚 V1/V2/V3/V4/V6 视觉 5 项，保留 perf 基础设施；(b) 部分回滚；(c) 修具体问题。
 
+## 2026-06-24 状态更新
+
+本次 session 完成 roadmap Sprint 2 wrap-up + roadmap E（A 同步起头）+ 5 个真 bug 修复，共 18 个 commit 推到 `origin/main`。
+
+**Round 1 — Sprint 2 wrap-up（owner decisions 执行）**
+
+- `9af432a3` `chore(web)`: `--radius-sm/md/lg` 对齐契约值 6/12/20；`global.css` 删除 3 行重复 glass token（不再压制 `index.css` 同名 token）。
+- `48052d9d` `feat(web)`: `.panel` 全局升级到 glass 体系（`--glass-bg-strong` + `--glass-blur` + `--glass-border` + `--shadow-2`）。
+- `2ea03331` `fix(web)`: AdminLoginPage 卡片接入 `.panel` class（之前硬编码旧 `rgba(18,18,28,0.95)` + 16px radius，唯一不一致点）。
+- 测试：`AdminLoginPage.test.tsx` 0→4 用例（之前无测试）。
+
+**Round 2 — roadmap E（GalleryHome 重构 759 → 364 行，-52%）**
+
+按从小到大顺序抽出 4 个组件 + 1 个数据层：
+
+- `55e8e93a` `refactor`: 抽 `<GalleryImageModal>`（全屏图片预览，~70 行）
+- `44a2ecb6` `refactor`: 抽 `<GalleryMediaRail>`（底部媒体条，~180 行）+ 暴露 `PublicMediaImage` type
+- `1ec0f8a6` `refactor`: 抽 `<GalleryTopBar>`（右上控制条，~165 行）
+- `00435fee` `refactor`: 抽 `<GalleryRelationshipPanel>`（右侧关系面板 shell，~95 行）
+- `505e8812` `refactor`: 抽 `locationImages.ts`（数据层 + 类型，~80 行）
+
+测试更新：`GalleryHome.test.tsx` 从 1 个 source string 变成 5 个（main + media rail + top bar + relationship panel + location images）。所有新加 string assertion 锁真实 contract（testid / aria-label / hook 调用 / breakpoint literal），无冗余。
+
+**Round 3 — roadmap A（移动端布局）**
+
+- `5c768eaa` `feat`: 关系面板窄屏切底部抽屉 + 新 `useMediaQuery` hook + 1 个 mobile test
+- `88228817` `fix(public)`: ProjectsPage / ProjectDetailPage 硬编码 grid（`minmax(320px, 1fr)` 和 `1fr 1fr`）改成 `minmax(min(100%, 280px), 1fr)`，窄屏单列不溢出
+
+**Round 4 — bug 修复（5 个真 bug + 2 个症状缓解）**
+
+按发现顺序：
+
+| Commit | 类型 | 修复 |
+|---|---|---|
+| `3ebbe951` | 症状 | `vite.config.ts` `server.host: '127.0.0.1'`（之前 proxy target 改 IPv4 但 server host 没改，导致 dev 用户访问 `127.0.0.1:5173` ERR_CONNECTION_REFUSED） |
+| `6f6ac012` `a3a2eb90` | 症状 | API 全局限流 60/min → 300/min → 1000/min（dev HMR + StrictMode + 用户浏览轻松超过） |
+| `5146c770` | **真 bug** | 3 个 public hooks (`usePublicProjects` / `usePublicProjectDetail` / `usePublicMediaSet`) 默认 fetcher 是 inline arrow，每次 render 重建，导致 useEffect 引用变化反复 fetch → 放大请求量。改用 `useCallback(..., [])` 稳定引用 |
+| `b139d866` | **真 bug** | mysql2 把 MySQL DECIMAL 列返回为 string，但 public API TypeScript 契约说是 `number`。`public/types.ts` LocationRow 类型撒谎，public service 直接传字符串。修：`LocationRow` 类型如实改 string（+ 注释解释 mysql2 quirk），service 输出 `Number(...)` 转 |
+| `2ce62059` | **真 bug** | `ProjectDetailPage` `useState(locations[0]?.id ?? null)` 在第一次 render 时 locations 是空（loading），state 锁定为 null，加载后 fallback 失效，LocationDetailPanel 永远显示空态。改用派生 fallback：`effectiveLocationId = selectedLocationId ?? locations[0]?.id ?? null` |
+| `af92c0fd` | **真 bug** | `apps/web/index.html` inline `<style>` 写了 `html, body { overflow: hidden }` 和 `#root { height: 100vh; overflow: hidden; position: fixed }`（pre-load splash 残留），锁死所有页面滚动。改为 `min-height` + `position: relative`。global.css 同步移除冗余 `body { overflow: hidden }` |
+| `ff770c05` | **真 bug** | `/map` 页面地图空白（`.map-page-base` height: 0）。maplibre 的 `.maplibregl-map { position: relative }` 与我的 `.map-page-base { position: absolute }` 同 specificity (0,1,0)，但 maplibre CSS 后加载赢。改用复合选择器 `.map-page-base.maplibregl-map`（specificity 0,2,0）压过去 |
+
+每个真 bug 都用 playwright 实机验收后再 commit。
+
+**收尾验证**
+
+- API: 13 文件 / 72 用例 全过；`tsc` 编译干净
+- Web: 39 文件 / 154 用例 全过；vite build 4.72s 干净
+- 5 个新加/修改测试文件全不冗余（contract 锁定，非 thin wrapper / URL literal / mock 自指）
+- 0 个新加测试文件需要删除
+- git working tree clean，18 个 commit 全推 `origin/main`
+
 ## 一句话说明
 
 Trace Scope Platform 是一个“空间叙事网站平台”：用项目作为顶层内容单元，把地点、路线、地图关系、图库图片、360 序列图片组织到同一个前台体验和后台管理系统里。
