@@ -25,18 +25,21 @@
     <style>
       html, body {
         margin: 0; padding: 0;
-        width: 100%; height: 100%;
-        overflow: hidden;
+        width: 100%; min-height: 100%;
       }
       body {
         background: linear-gradient(to bottom, #87CEEB 0%, #FFD9DA 55%, #f85a4e 100%);
       }
+      /* The splash uses position:fixed on its own (#splash inset:0), so we
+         don't need #root to fill the viewport. Keep #root in normal document
+         flow with min-height so pages that have real content (ProjectsPage,
+         ProjectDetailPage, ...) can scroll naturally. Pages that want a
+         fixed-viewport experience (e.g. GalleryHome with its 3D scene) set
+         that on their own root element. */
       #root {
-        width: 100vw;
-        height: 100vh;
-        overflow: hidden;
-        position: fixed;
-        top: 0; left: 0;
+        width: 100%;
+        min-height: 100vh;
+        position: relative;
         /* Ensure sky gradient is always painted under #root content */
         background: linear-gradient(to bottom, #87CEEB 0%, #FFD9DA 55%, #f85a4e 100%);
       }
