@@ -34,9 +34,9 @@
   --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.10), 0 12px 32px rgba(0, 0, 0, 0.06);
   --shadow-3: 0 12px 32px rgba(0, 0, 0, 0.16), 0 24px 64px rgba(0, 0, 0, 0.10);
 
-  --radius-sm: 12px;
-  --radius-md: 16px;
-  --radius-lg: 24px;
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
   --radius-pill: 999px;
   --radius-xl: 32px;
 
