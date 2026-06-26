@@ -21,9 +21,14 @@ cd apps/web && npm run dev
 ### 测试
 
 ```bash
-cd apps/api && npm test          # API 测试（Vitest）
-cd apps/web && npm test           # Web 测试（Vitest）
+cd apps/api && npm test              # API 单元/集成测试（Vitest）
+cd apps/web && npm test              # Web 单元/组件测试（Vitest，排除 e2e/）
+cd apps/web && npm run test:e2e      # Playwright E2E smoke（4 cases：home mount / projects page / public API / /health）
 ```
+
+E2E 前置：MySQL 8 运行中 + `trace_scope_e2e` 库已创建并跑过 migrations。
+Chromium 路径在 `playwright.config.ts` 中 hard-pin 到本机 cache；其他机器需设
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 或先 `npx playwright install`。
 
 ### 构建
 
@@ -111,6 +116,9 @@ Project -> Location / MediaSet / Route -> MediaImage
 | Phase 2 | Admin CRUD + 上传 | ✅ 完成 |
 | Phase 3 | Public API + 前端迁移 | ✅ 完成 |
 | Phase 4 | 单节点硬化 + 运维 | ✅ 完成 |
+| Sprint 1 | 后台体验 + 安全 + 内容编辑闭环 | ✅ 完成 |
+| Sprint 2 | 性能基础设施 + 视觉细节 | ✅ 完成 |
+| E2E harness | Playwright 配置 + 4 smoke cases + fixture seeder（roadmap B 基础，CI 集成待做） | ✅ 完成 |
 
 ## 文档
 
