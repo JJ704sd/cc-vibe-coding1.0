@@ -1,82 +1,143 @@
 # Trace Scope Platform
 
-Trace Scope Platform 是一个空间叙事平台，用于把项目、地点、轨迹、360 图片序列和图集内容组织到同一个网站中。当前代码库已经从早期前端骨架推进到前后端分离结构：`apps/web` 提供 React/Vite 前端，`apps/api` 提供 Fastify/MySQL 后端。
+Trace Scope Platform 是一个空间叙事平台：用 **Project** 作为顶层内容单元，把地点（`Location`）、路线（`Route`）、地图关系、360 图片序列（`spin360`）和图集（`gallery`）组织到同一个前台体验和后台管理系统里。
 
-本 README 的用途是给后续开发者或模型快速接手项目。它不是产品宣传文案，也不应该替代 `docs/` 里的设计规格、实施计划和 review 文档。
+- 前端：`apps/web` —— React 19 + Vite + TypeScript，含 3D 画廊（Three.js）、MapLibre 天地图、关系地图和后台管理。
+- 后端：`apps/api` —— Fastify + TypeScript + MySQL，模块化单体（auth / projects / locations / media-sets / media-images / routes / uploads / public / system）。
+- 部署：单节点 PM2 + Caddy 反向代理，PowerShell 备份/恢复/健康检查脚本齐全。
 
-## 当前状态
+本 README 给后续开发者或低上下文模型快速接手，更细的设计规格、实施计划和 review 文档见 `docs/`。
 
-已具备：
+---
 
-- 前台页面和后台管理页面的基础结构。
-- React/Vite 前端，包含项目页、地图页、图库/360 查看入口和后台页面。
-- Fastify 后端，包含 auth、projects、locations、routes、media-sets、media-images、uploads、public、system 等模块。
-- MySQL 迁移、基础 CRUD、公开 API、上传模块和本地文件存储。
-- 后台 CRUD 和上传接口的服务端 admin session 鉴权。
-- 上传文件公开读取已收敛到受控的 `/api/public/uploads/:fileId`。
-- Vitest 测试与前后端构建脚本。
-- 单节点部署相关材料：PM2、Caddy 配置、备份/恢复/健康检查脚本和运维文档。
-- 代码 review 文档：`docs/2026-05-24-code-review.md`。
+## 当前阶段
 
-仍需重点处理：
+四个 Phase 全部完成，并已完成 Sprint 1（后台体验闭环）、Sprint 2（性能基础设施 + 视觉细节）、移动端布局（A）和 GalleryHome 重构（E）。
 
-- 生产配置字段存在但部分没有传入真实启动路径。
-- `STORAGE_DIR` 与 `UPLOAD_ROOT` 的上传目录语义需要统一。
-- 公开项目封面字段当前返回 file id，前端按图片 URL 使用时可能 broken。
-- Web 构建中 `maplibre-gl` 和 gallery 相关 chunk 体积偏大，需要后续拆包优化。
+| 阶段 | 内容 | 状态 |
+| --- | --- | --- |
+| Phase 1 | 鉴权基础设施 | ✅ 完成 |
+| Phase 2 | Admin CRUD + 上传 | ✅ 完成 |
+| Phase 3 | Public API + 前端迁移 | ✅ 完成 |
+| Phase 4 | 单节点硬化 + 运维 | ✅ 完成 |
+| Sprint 1 | 后台体验 + 安全 + 内容编辑闭环（login rate limit、媒体拖拽重排、级联删除 preview、Toast） | ✅ 完成 |
+| Sprint 2 | 性能基础设施 + 视觉细节（favicon/OG、`vendor-maplibre` 动态 import、CSS critical/lazy、Glass tokens、Card hover、Skeleton/EmptyState、页面过渡） | ✅ 完成 |
+| 移动端布局 | 关系面板窄屏切底部抽屉、网格响应式 | ✅ 完成 |
+| GalleryHome 重构 | 759 行 → 364 行（−52%），抽出 ImageModal / MediaRail / TopBar / RelationshipPanel / locationImages | ✅ 完成 |
+| Bug 修复 | 真 bug 5 个 + 症状缓解 5 个（含 route 事务化、map-relationship mediaSetIds、admin auth 同步、滚动锁、maplibre 样式特异性等） | ✅ 完成 |
+
+## 当前能力
+
+### 前台
+
+| 路由 | 说明 |
+| --- | --- |
+| `/` | Gallery 首页：沉浸式 3D 画廊 + 地图基底，图片按经纬度投影到中国地图范围，无经纬度走 fallback 排列 |
+| `/projects` | 已发布项目卡片列表（玻璃质感 + hover 抬升 + EmptyState） |
+| `/projects/:idOrSlug` | 项目详情：地点、媒体组、路线（移动端单列响应式） |
+| `/map` | 地图关系页：项目/地点/路线/媒体组关系可视化（MapLibre + Three.js） |
+| `/spin/:mediaSetId` | 360 序列查看器（**不与 gallery 合并**） |
+| `/gallery/:mediaSetId` | 普通图集查看器 |
+
+### 后台
+
+所有后台 API 由 `requireAdminSession` 服务端 cookie 鉴权，未登录返 `401`。`POST /api/admin/login` 有 5/min/IP 自管 rate limit。
+
+| 路由 | 说明 |
+| --- | --- |
+| `/admin/login` | 登录页（`.panel` glass 体系 + prefers-reduced-motion 适配） |
+| `/admin` | 仪表盘入口 |
+| `/admin/projects` | 项目 CRUD + 标签 `#tag` chip + 级联删除二次确认 |
+| `/admin/locations` | 地点 CRUD + 级联删除二次确认 |
+| `/admin/media` | 媒体组/媒体图片 CRUD + HTML5 拖拽 + 键盘按钮重排 + location 下拉按 project 过滤 |
+| `/admin/routes` | 路线 CRUD + 原子化 location 链接替换 + 级联删除二次确认 |
+
+### 后端模块
+
+- `auth`：登录、session、登出；server 端 cookie 鉴权
+- `projects` / `locations` / `media-sets` / `media-images` / `routes`：CRUD + cascade-preview
+- `uploads`：multipart 上传 + 本地存储 + 受控公开读取
+- `public`：已发布内容读取、地图关系、文件可达性校验
+- `system`：健康检查（`/health`、`/health/live`、`/health/ready`）
+
+### 性能与视觉基础设施（Sprint 2 增量）
+
+- `vendor-maplibre` 1.05 MB 改为 dynamic import，非地图页首屏不下载
+- CSS 拆 critical（首屏 12.53 KB）+ lazy（76.26 KB 异步加载）
+- `<LazyImage>` + `buildSrcSet` util（已就绪，供后续接入）
+- Glass 设计 token（`--glass-bg-strong` / `--glass-blur` / `--glass-border` / `--shadow-2` / `--transition-fast/med`）应用到 `.panel` / card / hover
+- `Skeleton` / `EmptyState`（4 变体：no-projects / no-media / no-routes / no-results）/ `RouteTransition`（fade + y±8px）覆盖所有公开 page
 
 ## 技术栈
 
 | 部分 | 技术 |
 | --- | --- |
-| 前端 | React, Vite, TypeScript, React Router, Three.js, MapLibre GL, Framer Motion |
-| 后端 | Node.js, Fastify, TypeScript, MySQL |
-| 文件/上传 | Fastify multipart, 本地文件存储 |
-| 测试 | Vitest, Testing Library |
-| 运维 | PM2, Caddy, PowerShell backup/restore scripts |
+| 前端 | React 19, Vite, TypeScript, React Router, Three.js, MapLibre GL, Framer Motion |
+| 后端 | Node.js, Fastify, TypeScript, MySQL, mysql2 |
+| 文件/上传 | Fastify multipart, 本地文件存储, sha256 hash |
+| 测试 | Vitest, Testing Library, jsdom |
+| 运维 | PM2, Caddy, PowerShell 备份/恢复/健康检查脚本 |
 
 ## 目录结构
 
 ```text
 trace-scope-platform/
 |-- apps/
-|   |-- api/                 # Fastify 后端
-|   `-- web/                 # React + Vite 前端
+|   |-- api/                          # Fastify 后端（端口 4000）
+|   |   `-- src/
+|   |       |-- modules/              # 功能模块：auth, projects, locations, media-sets,
+|   |       |                        # media-images, routes, uploads, public, system
+|   |       |                        # 每个模块按 {routes, service, repository, types, *.test} 分层
+|   |       |-- infrastructure/       # DB pool, storage, helpers
+|   |       `-- app/                  # buildServer, config, errors
+|   `-- web/                          # React + Vite 前端（端口 5173）
+|       `-- src/
+|           |-- app/routes/           # 页面路由（public/, admin/, gallery/）
+|           |-- components/           # 共享组件（map/, media/, project/, common/, site/）
+|           |-- features/             # 按域划分（map/, gallery/, projects/, media/）
+|           |   `-- {api, model, projection}/  # API hooks / viewModel / 投影逻辑
+|           |-- lib/                  # lazyImage, constants, utils
+|           |-- services/             # storage (adminDataStore), api (httpClient), auth
+|           |-- styles/               # index.css (critical), non-critical.css (lazy)
+|           `-- types/                # domain.ts 共享类型
 |-- deploy/
-|   `-- caddy/               # Caddy 反向代理配置
+|   `-- caddy/                        # Caddy 反向代理配置
 |-- docs/
-|   |-- plans/               # 早期实施计划
-|   |-- specs/               # 早期设计规格
-|   |-- operations/          # 部署、备份、恢复文档
-|   |-- superpowers/         # 分阶段计划和规格
-|   `-- 2026-05-24-code-review.md
+|   |-- operations/                   # 部署、备份、恢复
+|   |-- plans/                        # 阶段规划
+|   |-- specs/                        # 设计规格
+|   |-- superpowers/                  # 分阶段细粒度计划和规格
+|   |-- 2026-05-24-code-review.md
+|   `-- 2026-05-26-current-feature-introduction-report.md
+|-- .planning/                        # 当前 round 规划与收尾决策
 |-- scripts/
-|   `-- ops/                 # 备份、恢复、健康检查、发布构建脚本
-|-- ecosystem.config.cjs     # PM2 配置
+|   `-- ops/                          # 备份、恢复、健康检查、发布构建脚本
+|-- ecosystem.config.cjs              # PM2 配置
 `-- README.md
 ```
 
-## 核心数据模型
-
-强约束链路：
+## 核心数据模型（强约束，不要改）
 
 ```text
-Project -> Location / MediaSet / Route -> MediaImage
+Project
+├── Location
+├── MediaSet  (type: spin360 | gallery)
+│   └── MediaImage
+└── Route
+    └── route_location  ──>  Location
 ```
-
-含义：
 
 - `Project` 是顶层叙事单元。
 - `Location` 必须属于一个 `Project`。
-- `MediaSet` 必须属于一个 `Project`，类型为 `spin360` 或 `gallery`。
-- `Route` 必须属于一个 `Project`。
+- `MediaSet` 必须属于一个 `Project`，类型二选一。
+- `Route` 必须属于一个 `Project`；路径由 `route_location` 串联已有 `Location`，不直接存坐标。
 - `MediaImage` 只能挂在 `MediaSet` 下，不能直接挂到页面或项目。
 
-后续修改不要擅自新增顶层核心实体，也不要随意改动核心字段名。若确实需要调整数据模型，先更新设计文档和迁移计划。
+不要新增顶层实体，不要随意改核心字段名。
 
 ## 本地启动
 
-### 1. 启动 API
+API（端口 4000）：
 
 ```powershell
 Set-Location "D:\VS vibe coding files\trace-scope-platform\apps\api"
@@ -86,9 +147,7 @@ npm run migrate
 npm run dev
 ```
 
-API 默认使用 `PORT=4000`。数据库、上传目录、session、CORS 等配置参考 `apps/api/.env.example` 和 `apps/api/.env.production.example`。
-
-### 2. 启动 Web
+Web（端口 5173，Vite 代理 `/api` → 4000）：
 
 ```powershell
 Set-Location "D:\VS vibe coding files\trace-scope-platform\apps\web"
@@ -97,39 +156,30 @@ npm install
 npm run dev
 ```
 
-Web 默认由 Vite 启动。地图底图依赖前端环境变量；如果没有配置地图 token，页面仍应保留容器和交互边界，但真实底图可能不显示。
+> 地图底图依赖前端环境变量（天地图 token）；未配置时页面容器和交互保留，真实底图可能不显示。
 
 ## 测试和构建
 
-API：
-
 ```powershell
+# API
 Set-Location "D:\VS vibe coding files\trace-scope-platform\apps\api"
 npm test
 npm run build
-```
 
-Web：
-
-```powershell
+# Web
 Set-Location "D:\VS vibe coding files\trace-scope-platform\apps\web"
 npm test
 npm run build
 ```
 
-当前提交前的 Web 验证记录（2026-05-24）：
+最近一次验证（2026-06-26，工作区 `3474e367`）：
 
-- Web tests: 33 files passed, 106 tests passed.
-- Web build: passed；Vite 已按 `react`、`three`、`maplibre-gl` 拆分 vendor chunks，当前构建无 chunk size warning。
+- API tests: **13 文件 / 89 用例** 全过
+- API build: ✅（`tsc` 通过）
+- Web tests: **40 文件 / 159 用例** 全过
+- Web build: ✅（`vite build` 干净，无 chunk size warning；首屏 JS ~9.40 KB，首屏 CSS 12.53 KB；`vendor-maplibre` 1.05 MB 仅在地图能力加载时引入）
 
-后台 API 鉴权合并后的验证记录（2026-05-26）：
-
-- API tests: 6 files passed, 37 tests passed.
-- API build: passed.
-- Web tests: 35 files passed, 110 tests passed.
-- Web build: passed.
-
-继续开发或部署前仍应重新运行相关命令。
+继续开发前请重新跑一次，不要只信任历史记录。
 
 ## 关键代码边界
 
@@ -140,60 +190,69 @@ npm run build
 - 公开 API hooks 位于 `apps/web/src/features/*/api/`。
 - 地图相关组件集中在 `apps/web/src/components/map/` 和 `apps/web/src/features/map/`。
 - gallery 相关组件集中在 `apps/web/src/components/gallery/` 和 `apps/web/src/features/gallery/`。
-- `spin360` 和 `gallery` 不要合并成一个查看器组件。
+- 通用 UI（`Skeleton` / `EmptyState` / `ToastProvider` / `CascadeDeleteDialog` / `RouteTransition`）集中在 `apps/web/src/components/common/`。
+- `spin360` 和 `gallery` **不要合并成一个查看器组件**。
+- `apps/web/src/styles/index.css` 是 critical-only 入口；非关键样式写到 `apps/web/src/styles/non-critical.css`，由 `apps/web/src/main.tsx` 异步加载。
 
 后端：
 
-- 应用入口在 `apps/api/src/main.ts`。
-- Fastify server 装配在 `apps/api/src/app/buildServer.ts`。
-- 配置读取在 `apps/api/src/app/config.ts`。
-- 数据库基础设施在 `apps/api/src/infrastructure/db/`。
-- 功能模块集中在 `apps/api/src/modules/`，每个模块通常按 `routes/service/repository/types` 分层。
+- 应用入口 `apps/api/src/main.ts`，所有生产配置（`corsOrigins` / `trustProxy` / `logLevel` / `bodyLimitBytes` / `rateLimitMax` / `rateLimitWindowMs` / `cookieSecure`）必须传进 `buildServer`。
+- Fastify server 装配 `apps/api/src/app/buildServer.ts`，配置读取 `apps/api/src/app/config.ts`。
+- 数据库基础设施 `apps/api/src/infrastructure/db/`。
+- 功能模块集中在 `apps/api/src/modules/`，每个模块按 `routes/service/repository/types` 分层。
+- `STORAGE_DIR` 是运行时上传目录唯一来源，`UPLOAD_ROOT` 保留为兼容回退。
+- 后台 CRUD + 上传 + cascade-preview API 全部走 `requireAdminSession` 服务端 cookie 鉴权。
 
 ## 公开 API
 
-当前公开 API 包括：
-
 | Endpoint | 用途 |
 | --- | --- |
+| `GET /health` / `/health/live` / `/health/ready` | 健康检查 |
 | `GET /api/public/projects` | 已发布项目列表 |
-| `GET /api/public/projects/:idOrSlug` | 已发布项目详情 |
-| `GET /api/public/media-sets/:id` | 已发布媒体组及图片 |
-| `GET /api/public/map-relationship` | 地图关系可视化数据 |
-| `GET /api/public/uploads/:fileId` | 受控公开文件读取 |
+| `GET /api/public/projects/:idOrSlug` | 已发布项目详情（含 locations、mediaSets、routes） |
+| `GET /api/public/media-sets/:id` | 已发布媒体组（含 images） |
+| `GET /api/public/map-relationship` | 地图关系可视化数据源（`projects[].mediaSetIds` 已真实填充） |
+| `GET /api/public/uploads/:fileId` | 受控公开文件读取（`PublicService.isFileReachableFromPublishedContent` 校验可达性） |
+| `POST /api/admin/login` | 管理员登录（5/min/IP rate limit） |
+| `GET /api/admin/session` | 查询登录状态（前端 AuthProvider mount 时调用，与 server 同步） |
+| `POST /api/admin/logout` | 登出 |
 
-注意：`/api/public/uploads/:fileId` 的设计意图是只返回发布内容可达文件；当前后端不再直接静态挂载 `/uploads/*`。
+注意：
+
+- `/api/public/uploads/:fileId` 是公开图片的唯一入口；后端已关闭 `/uploads/*` 直接静态挂载。
+- 公开项目封面字段仍叫 `coverImage`（不是 `coverImageUrl`），值是 `/api/public/uploads/{fileId}` 形式的可渲染 URL，保持前端类型兼容。
+- route service 的 create/update 已下沉事务到 repository，半路失败自动回滚；location_ids 缺省视为 `null`（保留旧链接），传数组（含空）才原子替换。
 
 ## 运维入口
-
-相关文件：
 
 - PM2: `ecosystem.config.cjs`
 - Caddy: `deploy/caddy/Caddyfile`
 - 部署文档：`docs/operations/single-node-deployment.md`
 - 备份恢复：`docs/operations/backup-and-recovery.md`
-- 运维脚本：`scripts/ops/*.ps1`
+- 运维脚本：`scripts/ops/{backup-mysql,restore-mysql,backup-uploads,restore-uploads,build-release,check-api-health}.ps1`
 
-后续部署前必须先确认上传目录配置、公开文件访问策略、CORS、rate limit、trust proxy、日志级别和 secure cookie 行为都已和生产环境一致。
+部署前必须确认：上传目录配置、公开文件访问策略、CORS、rate limit、trust proxy、日志级别、secure cookie 行为都已与生产环境一致。
 
 ## 推荐阅读顺序
 
-1. `README.md`：先建立项目全局认知。
-2. `docs/2026-05-24-code-review.md`：了解当前主要风险和修复优先级。
-3. `docs/superpowers/specs/2026-04-09-backend-modular-monolith-design.md`：理解后端模块化单体设计。
-4. `docs/superpowers/plans/`：查看后端分阶段实施计划。
-5. `docs/operations/`：查看部署、备份和恢复方案。
-6. 代码入口：`apps/api/src/main.ts`、`apps/api/src/app/buildServer.ts`、`apps/web/src/app/router.tsx`。
+1. `README.md`（本文）—— 项目全局认知
+2. `docs/2026-05-26-current-feature-introduction-report.md` —— 截至 2026-06-24 的完整功能介绍 + Sprint 1/2 详情
+3. `docs/2026-05-24-code-review.md` —— 主要风险历史和修复优先级
+4. `.planning/2026-06-06-next-round-roadmap.md` —— 下一阶段候选（A 移动端 / B+C E2E+CI / D 性能 / E GalleryHome 重构 / G 收工）
+5. `.planning/2026-06-23-sprint2-wrap-up.md` —— Sprint 2 收尾 owner 决策记录
+6. `docs/superpowers/specs/2026-04-09-backend-modular-monolith-design.md` —— 后端模块化单体设计
+7. `docs/operations/` —— 部署、备份、恢复方案
+8. 代码入口：`apps/api/src/main.ts`、`apps/api/src/app/buildServer.ts`、`apps/api/src/modules/auth/requireAdminSession.ts`、`apps/web/src/app/router.tsx`、`apps/web/src/services/auth/authContext.tsx`
 
-## 下一步优先级
+## 下一阶段候选
 
-建议按风险优先处理：
+主干干净，所有 P0/P1 已收口。`.planning/2026-06-06-next-round-roadmap.md` 列了 5 个候选方向；目前已实施 A（移动端布局）和 E（GalleryHome 重构）。剩下的：
 
-1. 修正 `main.ts` 到 `buildServer` 的生产配置传递。
-2. 统一 `STORAGE_DIR` 与 `UPLOAD_ROOT` 的语义。
-3. 修正公开项目封面 URL 映射。
-4. 为 route location 替换增加事务保护。
-5. 继续补后台表单、排序、发布流程和 Web chunk 拆分优化。
+- **B + C**: Playwright E2E + GitHub Actions CI（防御性投资）
+- **D**: 性能再优化（`vendor-maplibre` 已动态 import，CSS 已 critical/lazy；剩余空间不大）
+- **G**: 收工，等用户报新需求或实际生产部署再开新工作
+
+不建议：重启 4-07 plan hero 重设计（roadmap F）、合并 spin360/gallery、新增顶层实体。
 
 ## 交接规则
 
@@ -205,4 +264,7 @@ npm run build
 - 哪些能力已经可用，哪些只是结构基础。
 - 是否触碰了核心数据模型或公开 API 语义。
 
-不要只因为测试通过就宣称项目完成。这个项目还有明确的生产配置、上传目录语义和内容发布链路问题需要关闭。
+参考入口：
+
+- 后端：`apps/api/src/app/buildServer.ts`、`apps/api/src/modules/{auth,projects,locations,media-sets,routes}/`
+- 前端：`apps/web/src/app/router.tsx`、`apps/web/src/services/api/adminApi.ts`、`apps/web/src/components/common/ToastProvider.tsx`、`apps/web/src/components/common/CascadeDeleteDialog.tsx`、`apps/web/src/services/auth/authContext.tsx`
