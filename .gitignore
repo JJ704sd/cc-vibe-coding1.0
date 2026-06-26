@@ -3,8 +3,11 @@ apps/api/.env
 apps/api/.env.production
 apps/api/dist/
 apps/api/data/
+apps/api/storage-e2e/
 apps/api/node_modules/
 apps/web/.env
 apps/web/dist/
 apps/web/node_modules/
+apps/web/playwright-report/
+apps/web/test-results/
 backups/
