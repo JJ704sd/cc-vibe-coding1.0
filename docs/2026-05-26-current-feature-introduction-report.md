@@ -139,6 +139,64 @@ Sprint 2 验证终态:
 - 0 个新加测试文件需要删除
 - git working tree clean，18 个 commit 全推 `origin/main`
 
+## 2026-06-26 状态更新
+
+本次 session 完成 roadmap B 的本地端落地（roadmap C 的 CI 集成仍待做），2 个 commit 推到 `origin/main`：
+
+**Round 1 — E2E harness（Playwright 基础设施）**
+
+- `8b47e2dc` `test(e2e)`: 加 Playwright 配置 + 4 smoke cases + fixture seeder，9 files / 1266+ / 41-
+  - `apps/web/playwright.config.ts`：双 webServer（API 4000 + Vite 5173），`globalSetup` 跑 seed-e2e，chromium 路径 hard-pin 到本机 cache（注释说明本机只有 chromium-1181，因 playwright.azureedge.net 在国内环境被墙）
+  - `apps/web/e2e/global-setup.ts`：通过 `npm run seed:e2e` 强制 `MYSQL_DATABASE=trace_scope_e2e`，确保不会误删生产库
+  - `apps/web/e2e/smoke.spec.ts`：4 cases 覆盖 brand mount / fixture projection / API shape / API liveness
+  - `apps/api/src/infrastructure/db/seed-e2e.ts`：拒绝对非 e2e 库运行（database name 不含 `e2e` 直接 throw），9 张业务表全清后插入 fixture
+  - `apps/web/vitest.config.ts`：`exclude: ['e2e/**']`，避免 Playwright spec 被 vitest 错误收集
+  - `.gitignore`：`apps/api/storage-e2e/` `apps/web/playwright-report/` `apps/web/test-results/`
+  - `apps/api/package.json`：`seed:e2e` script；`apps/web/package.json`：`test:e2e` `test:e2e:ui` script + `@playwright/test` devDep
+  - Author: `JJ704SD <JJ704sd@users.noreply.github.com>`（GH007 私密邮箱 → 改 noreply amend 后 push）
+- `7b5f8d0f` `docs`: E2E harness Round 1 收尾 + CLAUDE.md / README 同步，3 files / 162+ / 14-
+  - `.planning/2026-06-26-e2e-harness-wrap-up.md`：完整收尾文档（现状快照 / 已完成 / 修复的 bug / 验证 / 冗余审视 / commit / 已知问题 / 后续 round 候选）
+  - `CLAUDE.md`：测试段加 e2e 命令 + chromium pin 提示；阶段状态表加 E2E harness 行
+  - `README.md`：技术栈加 Playwright；阶段表加 E2E harness；测试和构建段加 e2e；下一阶段候选 B 标完成、C 标待做
+
+**修复的 bug（在 8b47e2dc 隐含修复）**
+
+| # | Bug | 修复 |
+|---|---|---|
+| 1 | smoke spec 断言 `/api/public/projects` 是 array，实际 API 返回 `{ items: [...] }` | 改 `body.items.some(...)` |
+| 2 | smoke spec 打 `/api/health/live` 404，实际端点是 `/health`（`buildServer.ts:108`） | 改 `/health` |
+| 3 | Vite proxy 只覆盖 `/api`，`/health` 走 baseURL（5173）被 SPA 拦下返回 HTML | 改用 `process.env.PLAYWRIGHT_API_URL` 直接打 API 端口 |
+| 4 | vitest 默认 include 把 `e2e/smoke.spec.ts` 当 vitest spec 收集，phantom 失败 | `vitest.config.ts` 加 `exclude: ['e2e/**']` |
+
+**冗余审视（按 user_profile "清理冗余测试" 规则）**
+
+4 个 smoke case 分别测 brand mount / fixture projection / API shape / API liveness 4 个独立关注点，不是 thin wrapper / URL literal / mock 自指。**全部保留，无 prune。**
+
+**收尾验证**
+
+- E2E: 4/4 cases 全过（约 16-22s，含 API + Vite 启动）
+- API vitest: 13 文件 / 89 用例 全过
+- Web vitest: 40 文件 / 159 用例 全过（`vitest.config.ts` 已 exclude `e2e/**`）
+- API build: tsc OK
+- Web build: vite build 干净
+- git working tree clean，2 个 commit 全推 `origin/main`
+
+**Round 1 后的现状 / 后续候选**
+
+- 主干 HEAD: `7b5f8d0f`（远端同步）
+- roadmap 状态更新（见 `.planning/2026-06-06-next-round-roadmap.md`）：
+  - A 移动端布局 ✅ 完成
+  - B E2E harness ✅ 完成（本地端，CI 集成待做）
+  - C GitHub Actions CI ⏳ 待做（B 已就绪，可直接接 `.github/workflows/e2e.yml` + MySQL service container）
+  - D 性能再优化 ⏳ 待做（`vendor-maplibre` 已动态 import，剩余空间小）
+  - E GalleryHome 重构 ✅ 完成
+  - G 收工 ⏳ 候选
+- 已知问题（详见 `.planning/2026-06-26-e2e-harness-wrap-up.md`）：
+  1. chromium 路径 hard-pin（其他机器需 `npx playwright install` 或设 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`）
+  2. `trace_scope_e2e` 库需手工建 + 跑 migrations（seed-e2e 不会 CREATE DATABASE）
+  3. API e2e 未覆盖 admin 流程
+  4. 无 CI（roadmap C 范围内）
+
 ## 一句话说明
 
 Trace Scope Platform 是一个“空间叙事网站平台”：用项目作为顶层内容单元，把地点、路线、地图关系、图库图片、360 序列图片组织到同一个前台体验和后台管理系统里。
