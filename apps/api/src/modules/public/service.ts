@@ -332,6 +332,14 @@ export class PublicService {
       locationIdsByProject[loc.project_id].push(loc.id);
     }
 
+    const mediaSetIdsByProject: Record<string, string[]> = {};
+    for (const ms of mediaSets) {
+      if (!mediaSetIdsByProject[ms.project_id]) {
+        mediaSetIdsByProject[ms.project_id] = [];
+      }
+      mediaSetIdsByProject[ms.project_id].push(ms.id);
+    }
+
     const mediaSetIdsByLocation: Record<string, string[]> = {};
     for (const ms of mediaSets) {
       if (ms.location_id) {
@@ -369,7 +377,7 @@ export class PublicService {
         tags: tagsByProject[p.id] ?? [],
         status: "published" as const,
         locationIds: locationIdsByProject[p.id] ?? [],
-        mediaSetIds: [],
+        mediaSetIds: mediaSetIdsByProject[p.id] ?? [],
         routeIds: routeIdsByProject[p.id] ?? [],
         createdAt: p.created_at,
         updatedAt: p.updated_at,

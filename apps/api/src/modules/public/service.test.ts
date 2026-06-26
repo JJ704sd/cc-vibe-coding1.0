@@ -161,4 +161,71 @@ describe('PublicService cover image URL semantics', () => {
     expect(result.projects[0]?.coverImage).toBe('/api/public/uploads/file-proj');
     expect(result.mediaSets[0]?.coverImage).toBe('/api/public/uploads/file-ms');
   });
+
+  it('populates each project mediaSetIds from the actual media sets it owns', async () => {
+    const repository = buildRepository();
+    repository.getMapRelationshipSource.mockResolvedValue({
+      projects: [
+        {
+          id: 'p-1',
+          title: 'P1',
+          slug: 'p-1',
+          summary: '',
+          description: '',
+          cover_upload_file_id: null,
+          created_at: '2026-04-01T00:00:00.000Z',
+          updated_at: '2026-04-01T00:00:00.000Z',
+        },
+        {
+          id: 'p-2',
+          title: 'P2',
+          slug: 'p-2',
+          summary: '',
+          description: '',
+          cover_upload_file_id: null,
+          created_at: '2026-04-01T00:00:00.000Z',
+          updated_at: '2026-04-01T00:00:00.000Z',
+        },
+      ],
+      tags: [],
+      locations: [],
+      mediaSets: [
+        {
+          id: 'ms-1',
+          project_id: 'p-1',
+          location_id: null,
+          type: 'gallery',
+          title: 'G1',
+          description: '',
+          cover_upload_file_id: null,
+          is_featured: 0,
+          created_at: '2026-04-01T00:00:00.000Z',
+          updated_at: '2026-04-01T00:00:00.000Z',
+        },
+        {
+          id: 'ms-2',
+          project_id: 'p-1',
+          location_id: null,
+          type: 'spin360',
+          title: 'S1',
+          description: '',
+          cover_upload_file_id: null,
+          is_featured: 0,
+          created_at: '2026-04-01T00:00:00.000Z',
+          updated_at: '2026-04-01T00:00:00.000Z',
+        },
+      ],
+      routes: [],
+      routeLocations: [],
+      mediaImages: [],
+    });
+
+    const service = new PublicService(repository, buildStorage());
+    const result = await service.getMapRelationship();
+
+    const p1 = result.projects.find((p) => p.id === 'p-1');
+    const p2 = result.projects.find((p) => p.id === 'p-2');
+    expect(p1?.mediaSetIds).toEqual(['ms-1', 'ms-2']);
+    expect(p2?.mediaSetIds).toEqual([]);
+  });
 });
