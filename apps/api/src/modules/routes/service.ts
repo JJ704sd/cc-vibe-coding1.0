@@ -63,19 +63,21 @@ export class RouteService {
     );
     if (!project) throw new AppError("project_id not found", 400);
 
-    for (const lid of input.location_ids ?? []) {
-      const location = await queryOne<{ id: string }>(
-        this.pool,
-        `SELECT id FROM location WHERE id = ? AND project_id = ?`,
-        [lid, input.project_id]
-      );
-      if (!location) throw new AppError(`location_id ${lid} not found or does not belong to project`, 400);
+    // Batch-verify every requested location in a single SELECT. If the count
+    // doesn't match, at least one id is missing or doesn't belong to the
+    // project, but we don't reveal which one to avoid leaking existence.
+    const locationIds = input.location_ids ?? [];
+    if (locationIds.length > 0) {
+      const found = await this.repository.findLocationsByIdsAndProject(locationIds, input.project_id);
+      if (found.length !== locationIds.length) {
+        throw new AppError("one or more location_ids are missing or do not belong to project", 400);
+      }
     }
 
     const id = randomUUID();
     const now = nowISO();
 
-    await this.repository.upsertRoute({
+    return this.repository.createRouteWithLocations({
       id,
       project_id: input.project_id,
       name: input.name,
@@ -85,16 +87,8 @@ export class RouteService {
       is_featured: input.is_featured ? 1 : 0,
       created_at: now,
       updated_at: now,
+      location_ids: locationIds,
     });
-
-    for (let i = 0; i < (input.location_ids ?? []).length; i++) {
-      await this.repository.insertRouteLocation(id, input.location_ids![i], i);
-    }
-
-    await this.pool.persist();
-    const route = await this.repository.findById(id);
-    const locations = await this.repository.findRouteLocations(id);
-    return { ...route!, locations };
   }
 
   async update(
@@ -116,7 +110,7 @@ export class RouteService {
     }
 
     const now = nowISO();
-    await this.repository.updateRoute({
+    return this.repository.updateRouteWithLocations({
       id: existing.id,
       name: input.name ?? null,
       description: input.description ?? null,
@@ -124,23 +118,16 @@ export class RouteService {
       color: input.color ?? null,
       is_featured: input.is_featured !== undefined ? (input.is_featured ? 1 : 0) : null,
       updated_at: now,
+      // null = leave location links untouched; an array (possibly empty) =
+      // atomically swap the link set inside the same transaction.
+      location_ids: input.location_ids !== undefined ? input.location_ids : null,
     });
-
-    if (input.location_ids !== undefined) {
-      await this.repository.replaceRouteLocations(existing.id, input.location_ids);
-    }
-
-    await this.pool.persist();
-    const route = await this.repository.findById(existing.id);
-    const locations = await this.repository.findRouteLocations(existing.id);
-    return { ...route!, locations };
   }
 
   async delete(id: string): Promise<boolean> {
     const existing = await this.repository.findById(id);
     if (!existing) return false;
     await this.repository.deleteRoute(id);
-    await this.pool.persist();
     return true;
   }
 
