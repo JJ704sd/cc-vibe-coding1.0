@@ -31,3 +31,7 @@
 ## 安全与配置注意事项
 
 不要提交 `.env`、日志、生成的上传文件或本地照片。后台 CRUD 和上传 API 必须保留服务端 admin session 鉴权。公开文件应通过 `/api/public/uploads/:fileId` 输出，不要重新开放 `/uploads/*` 静态目录。
+
+## 项目级 Pitfall 收集
+
+本仓库踩过的具体坑(git push 抖动 / GH007 私密邮箱 / worktree 清理 SOP / README 验证日志同步 / 仓库上下文)汇总在 [`docs/agents/pitfalls.md`](docs/agents/pitfalls.md)。换 agent / 接手人时先读这份。跨项目通用的 Windows / GitHub / agent 协作经验留在 agent 全局 memory,不在那里重复。
