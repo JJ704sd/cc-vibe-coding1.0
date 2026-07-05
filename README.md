@@ -178,13 +178,14 @@ Set-Location "D:\VS vibe coding files\trace-scope-platform\apps\web"
 npm run test:e2e
 ```
 
-最近一次验证（2026-06-26，工作区 `8b47e2dc`）：
+最近一次验证（2026-07-05 收尾检查，工作区 `45d80768` → `e9977b30`）：
 
-- E2E: **4/4 cases** 全过（约 16-22s，含 API + Vite 启动）
+- E2E: 上一轮 2026-06-26 验证 **4/4 cases** 全过（约 16-22s，本轮未重跑；CI 集成仍待 roadmap C）
 - API tests: **13 文件 / 89 用例** 全过
 - API build: ✅（`tsc` 通过）
-- Web tests: **40 文件 / 159 用例** 全过（`vitest.config.ts` 已 exclude `e2e/**`）
-- Web build: ✅（`vite build` 干净，无 chunk size warning；首屏 JS ~9.40 KB，首屏 CSS 12.53 KB；`vendor-maplibre` 1.05 MB 仅在地图能力加载时引入）
+- Web tests: **34 文件 / 145 用例** 全过（`vitest.config.ts` 已 exclude `e2e/**`；本轮清理 6 个冗余自指测试 -6 文件 -14 用例）
+- Web build: ✅（`vite build` 干净，无 chunk size warning；首屏 JS ~9.74 KB，首屏 CSS 12.53 KB；`vendor-maplibre` 1.05 MB 仅在地图能力加载时引入）
+- TODO / FIXME / HACK / deprecated 残留: 0 处
 
 继续开发前请重新跑一次，不要只信任历史记录。
 
