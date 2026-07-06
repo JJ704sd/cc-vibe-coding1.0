@@ -85,27 +85,35 @@ export function createMediaImageRepository() {
             input.id,
           ],
         );
-      } else {
-        // Insert new
-        const id = input.id ?? crypto.randomUUID();
-        await pool.execute(
-          `INSERT INTO media_image (id, media_set_id, upload_file_id, alt_text, caption, sort_order, latitude, longitude, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            id,
-            input.media_set_id,
-            input.upload_file_id,
-            input.alt_text,
-            input.caption,
-            input.sort_order,
-            input.latitude,
-            input.longitude,
-            input.now,
-            input.now,
-          ],
+        const rows = await pool.query<MediaImageRow>(
+          `SELECT * FROM media_image WHERE id = ?`,
+          [input.id],
         );
+        return rows[0];
       }
-      const rows = await pool.query<MediaImageRow>(`SELECT * FROM media_image WHERE id = ?`, [input.id ?? '']);
+
+      // Insert new — generate id first, then INSERT and SELECT using that id
+      const id = crypto.randomUUID();
+      await pool.execute(
+        `INSERT INTO media_image (id, media_set_id, upload_file_id, alt_text, caption, sort_order, latitude, longitude, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          id,
+          input.media_set_id,
+          input.upload_file_id,
+          input.alt_text,
+          input.caption,
+          input.sort_order,
+          input.latitude,
+          input.longitude,
+          input.now,
+          input.now,
+        ],
+      );
+      const rows = await pool.query<MediaImageRow>(
+        `SELECT * FROM media_image WHERE id = ?`,
+        [id],
+      );
       return rows[0];
     },
 

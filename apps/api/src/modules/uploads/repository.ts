@@ -53,5 +53,21 @@ export function createUploadRepository() {
       const pool = getPool();
       await runQuery(pool, `DELETE FROM upload_file WHERE id = ?`, [id]);
     },
+
+    async countReferences(id: string): Promise<number> {
+      const pool = getPool();
+      // Sum references across the three FKs that point at upload_file.
+      // Using scalar subqueries keeps the statement a single round trip and
+      // avoids the cost of materialising a UNION ALL result set.
+      const row = await queryOne<{ total: number }>(
+        pool,
+        `SELECT
+           (SELECT COUNT(*) FROM project      WHERE cover_upload_file_id = ?) +
+           (SELECT COUNT(*) FROM media_set    WHERE cover_upload_file_id = ?) +
+           (SELECT COUNT(*) FROM media_image  WHERE upload_file_id       = ?) AS total`,
+        [id, id, id],
+      );
+      return row?.total ?? 0;
+    },
   };
 }

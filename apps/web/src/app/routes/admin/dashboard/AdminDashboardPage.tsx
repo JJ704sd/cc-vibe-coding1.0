@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { projectsApi, locationsApi, mediaSetsApi, routesApi } from '@/services/api/adminApi';
+import { ToastProvider } from '@/components/common/ToastProvider';
+import { useToast } from '@/components/common/useToast';
 
-export function AdminDashboardPage() {
+function AdminDashboardPageInner() {
+  const toast = useToast();
   const [stats, setStats] = useState({ projects: 0, locations: 0, mediaSets: 0, routes: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -11,10 +14,16 @@ export function AdminDashboardPage() {
       locationsApi.list(),
       mediaSetsApi.list(),
       routesApi.list(),
-    ]).then(([p, l, m, r]) => {
-      setStats({ projects: p.length, locations: l.length, mediaSets: m.length, routes: r.length });
-    }).finally(() => setLoading(false));
-  }, []);
+    ])
+      .then(([p, l, m, r]) => {
+        setStats({ projects: p.length, locations: l.length, mediaSets: m.length, routes: r.length });
+      })
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : '仪表盘加载失败';
+        toast.error(message);
+      })
+      .finally(() => setLoading(false));
+  }, [toast]);
 
   const items = [
     { label: '项目数量', value: stats.projects, icon: '📁' },
@@ -56,5 +65,13 @@ export function AdminDashboardPage() {
         </div>
       </div>
     </>
+  );
+}
+
+export function AdminDashboardPage() {
+  return (
+    <ToastProvider>
+      <AdminDashboardPageInner />
+    </ToastProvider>
   );
 }

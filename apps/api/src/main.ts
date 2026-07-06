@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import { buildServer } from './app/buildServer.js';
 import { loadConfig } from './app/config.js';
 import { initDb, getPool } from './infrastructure/db/db.js';
@@ -7,7 +7,17 @@ import { createAuthRepository } from './modules/auth/repository.js';
 import { AuthService } from './modules/auth/service.js';
 import { createSystemHealthService } from './modules/system/health.js';
 import { access } from 'node:fs/promises';
-import { resolve, isAbsolute } from 'node:path';
+import { resolve, isAbsolute, join } from 'node:path';
+
+// Honour DOTENV_CONFIG_PATH (set by ecosystem.config.cjs in production)
+// before reading any config that depends on process.env. The bare
+// `import 'dotenv/config'` shortcut only loads `.env`, so a PM2 deploy with
+// `DOTENV_CONFIG_PATH=.env.production` would silently fall through to the
+// hard-coded defaults in config.ts — including a `dev-secret-*` session
+// secret.
+const envFile = process.env.DOTENV_CONFIG_PATH ?? '.env';
+const envPath = isAbsolute(envFile) ? envFile : join(process.cwd(), envFile);
+dotenv.config({ path: envPath });
 
 async function main() {
   const config = loadConfig();

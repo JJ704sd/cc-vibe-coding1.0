@@ -103,6 +103,14 @@ export function GalleryHome() {
           return next;
         });
       })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        // Surface the failure in the console without escalating to an
+        // unhandled rejection. The gallery renders empty for missing
+        // locations — there is no toast surface in this route.
+        // eslint-disable-next-line no-console
+        console.error('[GalleryHome] failed to preload gallery media', error);
+      })
       .finally(() => {
         if (!cancelled) {
           setBootstrappingGallery(false);

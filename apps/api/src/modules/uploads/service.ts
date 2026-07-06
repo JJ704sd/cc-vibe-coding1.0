@@ -14,6 +14,7 @@ export class UploadService {
       findByIds(ids: string[]): Promise<{ id: string; storage_key: string; original_filename: string; mime_type: string; byte_size: number; sha256_hash: string; created_at: string }[]>;
       insertUploadFile(input: { id: string; storageKey: string; originalFilename: string; mimeType: string; byteSize: number; sha256Hash: string; createdAt: string }): Promise<void>;
       deleteUploadFile(id: string): Promise<void>;
+      countReferences(id: string): Promise<number>;
     },
     private readonly storage: LocalFileStorage,
   ) {}
@@ -81,9 +82,28 @@ export class UploadService {
 
   async deleteUpload(id: string): Promise<void> {
     const file = await this.repository.findById(id);
-    if (file) {
-      await this.storage.deleteFile(file.storage_key);
+    if (!file) {
+      // Already gone; nothing to do.
+      return;
     }
+
+    // Reject the delete if any row still references the file. Without this
+    // check the DB DELETE below would fail with a FK violation after the
+    // file on disk was already removed, leaving an orphan row pointing at a
+    // missing blob.
+    const references = await this.repository.countReferences(id);
+    if (references > 0) {
+      throw new AppError(
+        `Cannot delete upload ${id}: still referenced by ${references} row(s)`,
+        409,
+      );
+    }
+
+    // Delete the DB row first, then the file. If the disk delete fails the
+    // row is already gone, but the worst case is a stale blob that an
+    // operator can prune manually — never an orphan DB row pointing at a
+    // missing file.
     await this.repository.deleteUploadFile(id);
+    await this.storage.deleteFile(file.storage_key);
   }
 }

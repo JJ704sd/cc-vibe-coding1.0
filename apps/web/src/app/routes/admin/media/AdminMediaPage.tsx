@@ -27,6 +27,15 @@ interface ImageDeleteState {
 
 function AdminMediaPageInner() {
   const toast = useToast();
+  // Stash the latest toast handle in a ref so loadData can stay stable
+  // (empty deps). Without this, the ref returned by useToast() changes
+  // every render → useCallback regenerates loadData → the mount effect
+  // re-runs → setLoading(true) gets called again, leaving the page
+  // permanently in the "加载中..." state.
+  const toastRef = useRef(toast);
+  useEffect(() => {
+    toastRef.current = toast;
+  }, [toast]);
   const [mediaSets, setMediaSets] = useState<MediaSet[]>([]);
   const [mediaImages, setMediaImages] = useState<MediaImage[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -64,16 +73,21 @@ function AdminMediaPageInner() {
   const [imageDeleting, setImageDeleting] = useState(false);
 
   const loadData = useCallback(async () => {
-    const [sets, imgs, projs, locs] = await Promise.all([
-      mediaSetsApi.list(),
-      mediaImagesApi.list(),
-      projectsApi.list(),
-      locationsApi.list(),
-    ]);
-    setMediaSets(sets);
-    setMediaImages(imgs);
-    setProjects(projs);
-    setLocations(locs);
+    try {
+      const [sets, imgs, projs, locs] = await Promise.all([
+        mediaSetsApi.list(),
+        mediaImagesApi.list(),
+        projectsApi.list(),
+        locationsApi.list(),
+      ]);
+      setMediaSets(sets);
+      setMediaImages(imgs);
+      setProjects(projs);
+      setLocations(locs);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : '加载失败';
+      toastRef.current.error(message);
+    }
   }, []);
 
   useEffect(() => {
