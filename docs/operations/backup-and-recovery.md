@@ -48,4 +48,4 @@ Verify all four items:
 - health checks return `ok`
 - admin login still works
 - at least one public project page opens
-- at least one uploaded image still resolves through `/uploads/:fileId`
+- at least one uploaded image still resolves through `/api/public/uploads/:fileId`

@@ -1,7 +1,7 @@
 [CmdletBinding(SupportsShouldProcess = $true)]
 param(
   [string]$UploadRoot = $(if ($env:STORAGE_DIR) { $env:STORAGE_DIR } elseif ($env:UPLOAD_ROOT) { $env:UPLOAD_ROOT } else { '' }),
-  [string]$BackupRoot = (Join-Path (Resolve-Path (Join-Path $PSScriptRoot '..\..').Path 'backups\uploads')
+  [string]$BackupRoot = (Join-Path (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path 'backups\uploads')
 )
 
 if (-not $UploadRoot) { throw 'STORAGE_DIR (or legacy UPLOAD_ROOT) is required.' }

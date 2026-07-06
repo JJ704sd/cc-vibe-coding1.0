@@ -1,7 +1,7 @@
 {$TRACE_SCOPE_DOMAIN} {
   encode gzip zstd
 
-  @api path /api/* /health /health/* /uploads/*
+  @api path /api/* /api/public/uploads/* /health /health/*
   handle @api {
     reverse_proxy 127.0.0.1:{$TRACE_SCOPE_API_PORT}
   }

@@ -21,8 +21,10 @@ $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $targetFile = Join-Path $BackupRoot "$MysqlDatabase-$timestamp.sql"
 
 if ($PSCmdlet.ShouldProcess($targetFile, 'Create MySQL dump')) {
-  & $MysqlDumpExe "--host=$MysqlHost" "--port=$MysqlPort" "--user=$MysqlUser" "--password=$MysqlPassword" "--default-character-set=utf8mb4" "--single-transaction" "--quick" $MysqlDatabase | Set-Content -LiteralPath $targetFile -Encoding utf8
+  $dumpOutput = & $MysqlDumpExe "--host=$MysqlHost" "--port=$MysqlPort" "--user=$MysqlUser" "--password=$MysqlPassword" "--default-character-set=utf8mb4" "--single-transaction" "--quick" $MysqlDatabase
   if ($LASTEXITCODE -ne 0) { throw 'mysqldump failed.' }
+  $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+  [System.IO.File]::WriteAllText($targetFile, ($dumpOutput -join "`r`n"), $utf8NoBom)
 }
 
 Write-Host "MySQL backup target: $targetFile"
