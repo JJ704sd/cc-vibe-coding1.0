@@ -1,9 +1,16 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { MediaImage } from '@/types/domain';
 
 export function SpinViewer({ images }: { images: MediaImage[] }) {
   const orderedImages = useMemo(() => [...images].sort((a, b) => a.sortOrder - b.sortOrder), [images]);
   const [frameIndex, setFrameIndex] = useState(0);
+
+  // BUG-025: when the parent swaps to a different mediaSet (different
+  // images array), reset frameIndex so we don't try to render an
+  // out-of-bounds frame from the previous set.
+  useEffect(() => {
+    setFrameIndex(0);
+  }, [images]);
   const currentImage = orderedImages[frameIndex] ?? orderedImages[0];
   const totalFrames = orderedImages.length;
 

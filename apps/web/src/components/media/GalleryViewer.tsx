@@ -1,9 +1,16 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { MediaImage } from '@/types/domain';
 
 export function GalleryViewer({ images }: { images: MediaImage[] }) {
   const orderedImages = useMemo(() => [...images].sort((a, b) => a.sortOrder - b.sortOrder), [images]);
   const [activeId, setActiveId] = useState(orderedImages[0]?.id ?? '');
+
+  // BUG-025: when the parent swaps to a different mediaSet (different
+  // images array), reset activeId to the first image of the new set
+  // so we don't keep highlighting a no-longer-present image.
+  useEffect(() => {
+    setActiveId(orderedImages[0]?.id ?? '');
+  }, [images, orderedImages]);
   const activeImage = orderedImages.find((image) => image.id === activeId) ?? orderedImages[0];
 
   if (orderedImages.length === 0) {

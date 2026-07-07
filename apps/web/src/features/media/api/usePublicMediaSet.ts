@@ -40,6 +40,10 @@ export function usePublicMediaSet({
     }
 
     let cancelled = false;
+    // BUG-023: reset data to null when mediaSetId changes so consumers
+    // don't briefly render the previous set's images while the new
+    // fetch is in flight (perceptual "flash" of stale content).
+    setData(null);
     setLoading(true);
     setError(null);
 
