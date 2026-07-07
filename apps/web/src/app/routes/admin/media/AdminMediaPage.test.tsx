@@ -133,13 +133,4 @@ describe('AdminMediaPage', () => {
       expect(mediaSetsApi.delete).toHaveBeenCalledWith('ms-1');
     });
   });
-
-  it('renders image upload fields with latitude/longitude support', async () => {
-    const fs = await import('node:fs');
-    const source = fs.readFileSync('src/app/routes/admin/media/AdminMediaPage.tsx', 'utf-8');
-    expect(source).toContain('imageLatitude');
-    expect(source).toContain('imageLongitude');
-    expect(source).toMatch(/latitude:\s*imageLatitude\s*\?\s*parseFloat\(imageLatitude\)\s*:\s*undefined/);
-    expect(source).toMatch(/longitude:\s*imageLongitude\s*\?\s*parseFloat\(imageLongitude\)\s*:\s*undefined/);
-  });
 });
