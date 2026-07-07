@@ -1,6 +1,4 @@
-﻿import { useMemo, useState } from 'react';
-import type { Map as MaplibreMap } from 'maplibre-gl';
-import { Link } from 'react-router-dom';
+﻿import { Link } from 'react-router-dom';
 import {
   MapBase3DView,
   MapRelationshipPanel,
@@ -9,45 +7,11 @@ import {
 } from '@/components/map';
 import { Skeleton, SkeletonStack } from '@/components/common/Skeleton';
 import { ErrorState } from '@/components/common/EmptyState';
-import { useMapRelationshipData } from '@/features/map/api/useMapRelationshipData';
-import { useProjectedMapGraph } from '@/features/map/projection/useProjectedMapGraph';
+import { useMapPageController } from '@/features/map/useMapPageController';
 
 export function MapPage() {
-  const [mapInstance, setMapInstance] = useState<MaplibreMap | null>(null);
-  const relationshipData = useMapRelationshipData();
-  const [activeProjectId] = useState<string | null>(
-    relationshipData.projectGroups[0]?.projectId ?? null,
-  );
-  const [activeLocationId, setActiveLocationId] = useState<string | null>(
-    relationshipData.nodes[0]?.id ?? null,
-  );
-
-  // Project nodes and edges using the live map instance
-  const projected = useProjectedMapGraph({
-    map: mapInstance,
-    viewModel: {
-      nodes: relationshipData.nodes,
-      edges: relationshipData.edges,
-    },
-  });
-
-  // Derive the active anchor (projected node matching activeLocationId)
-  const activeAnchor = useMemo(
-    () => projected.nodes.find((n) => n.id === activeLocationId) ?? null,
-    [projected.nodes, activeLocationId],
-  );
-
-  const activeCluster = useMemo(
-    () =>
-      relationshipData.mediaClusters.find(
-        (cluster) => cluster.locationId === activeLocationId,
-      ) ?? null,
-    [relationshipData.projectGroups, relationshipData.mediaClusters, activeLocationId],
-  );
-
-  const activeProject =
-    relationshipData.projectGroups.find((group) => group.projectId === activeProjectId) ?? null;
-  const activeNode = relationshipData.nodes.find((node) => node.id === activeLocationId) ?? null;
+  const controller = useMapPageController();
+  const { relationshipData } = controller;
 
   return (
     <div className="map-page-shell">
@@ -79,18 +43,18 @@ export function MapPage() {
       <div className="map-page-stage">
         <MapBase3DView
           className="map-page-base"
-          onMapReady={setMapInstance}
+          onMapReady={controller.setMapInstance}
         />
         <MapProjectionOverlay
-          width={projected.width}
-          height={projected.height}
-          nodes={projected.nodes}
-          edges={projected.edges}
-          activeProjectId={activeProjectId}
-          activeLocationId={activeLocationId}
-          onLocationSelect={setActiveLocationId}
+          width={controller.projected.width}
+          height={controller.projected.height}
+          nodes={controller.projected.nodes}
+          edges={controller.projected.edges}
+          activeProjectId={controller.activeProjectId}
+          activeLocationId={controller.activeLocationId}
+          onLocationSelect={controller.setActiveLocationId}
         />
-        <MediaClusterLayer cluster={activeCluster} anchor={activeAnchor} />
+        <MediaClusterLayer cluster={controller.activeCluster} anchor={controller.activeAnchor} />
         {relationshipData.loading ? (
           <div
             data-testid="map-relationship-loading"
@@ -135,15 +99,15 @@ export function MapPage() {
         />
       ) : (
         <MapRelationshipPanel
-          title={activeNode?.title ?? activeProject?.title ?? '中国 3D 地图关系图'}
+          title={controller.activeNode?.title ?? controller.activeProject?.title ?? '中国 3D 地图关系图'}
           summary={
-            activeNode?.description ??
-            activeProject?.summary ??
+            controller.activeNode?.description ??
+            controller.activeProject?.summary ??
             '地图作为底层空间基底，地点、轨迹与图片关系以满天星结构映射在其上。'
           }
-          projectId={activeProject?.projectId ?? activeCluster?.projectId ?? null}
-          mediaSetId={activeCluster?.mediaSetIds?.[0] ?? null}
-          mediaSetType={activeCluster?.type ?? null}
+          projectId={controller.activeProject?.projectId ?? controller.activeCluster?.projectId ?? null}
+          mediaSetId={controller.activeCluster?.mediaSetIds?.[0] ?? null}
+          mediaSetType={controller.activeCluster?.type ?? null}
         />
       )}
     </div>
