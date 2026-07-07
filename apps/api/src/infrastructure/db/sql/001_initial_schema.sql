@@ -17,5 +17,9 @@ CREATE TABLE IF NOT EXISTS admin_session (
   last_seen_at DATETIME(3) NOT NULL,
   ip_address VARCHAR(64) NULL,
   user_agent VARCHAR(255) NULL,
+  -- BUG-020: required by the startup-time purge of expired sessions
+  -- (main.ts runs `DELETE FROM admin_session WHERE expires_at < NOW()`)
+  -- and by any future TTL sweep job.
+  KEY idx_admin_session_expires_at (expires_at),
   CONSTRAINT fk_admin_session_user FOREIGN KEY (user_id) REFERENCES admin_user(id) ON DELETE CASCADE
 );

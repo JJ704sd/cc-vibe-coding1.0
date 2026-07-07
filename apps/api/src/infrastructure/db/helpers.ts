@@ -1,3 +1,4 @@
+import type { ResultSetHeader } from 'mysql2';
 import type { DbPool } from './db.js';
 export { getPool } from './db.js';
 export type { DbPool };
@@ -18,11 +19,16 @@ export const queryOne = async <T>(
   return pool.queryOne<T>(sql, params);
 };
 
+/**
+ * Run a write statement (INSERT / UPDATE / DELETE). Returns mysql2's
+ * ResultSetHeader so callers can read affectedRows / insertId when
+ * needed (e.g. startup-time purge logs). For SELECTs use queryAll.
+ */
 export const runQuery = async (
   pool: DbPool,
   sql: string,
   params: unknown[] = []
-): Promise<void> => {
+): Promise<ResultSetHeader> => {
   return pool.execute(sql, params);
 };
 

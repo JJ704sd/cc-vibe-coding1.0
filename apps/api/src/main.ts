@@ -24,6 +24,23 @@ async function main() {
   await initDb(config);
   await ensureBootstrapAdmin(config);
 
+  // BUG-020: purge expired admin sessions at startup so the table
+  // doesn't grow unbounded over months of uptime. Cheap because
+  // `admin_session.expires_at` is indexed (see 001_initial_schema.sql).
+  // Failure here is non-fatal — log and continue, a future request
+  // will still succeed even if this sweep dies.
+  try {
+    const pool = getPool();
+    const result = await pool.execute(
+      'DELETE FROM admin_session WHERE expires_at < NOW()'
+    );
+    if (result.affectedRows > 0) {
+      console.log(`[startup] purged ${result.affectedRows} expired admin session(s)`);
+    }
+  } catch (err) {
+    console.warn('[startup] failed to purge expired admin sessions:', err);
+  }
+
   const authRepository = createAuthRepository();
   const authService = new AuthService(authRepository);
 

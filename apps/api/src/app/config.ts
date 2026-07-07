@@ -55,6 +55,42 @@ function readCsv(value: string | undefined, fallback: string[]): string[] {
   return value.split(',').map(e => e.trim()).filter(Boolean);
 }
 
+/**
+ * BUG-017: SESSION_SECRET must be set explicitly in production. Without
+ * this guard, an empty `.env.production` (or a forgotten env var) silently
+ * boots the API with a hard-coded fallback string that any reader of the
+ * open-source code knows — i.e. all production sessions would be forgeable.
+ *
+ * In non-production we still keep the dev fallback so `npm run dev`
+ * keeps working out of the box; this matches the .env.example defaults.
+ */
+function readSessionSecret(env: EnvSource): string {
+  const value = env.SESSION_SECRET;
+  if (value) return value;
+  if (env.NODE_ENV !== 'production') {
+    return 'dev-secret-change-in-production';
+  }
+  throw new Error(
+    'Missing required env: SESSION_SECRET (production requires explicit value; generate with `openssl rand -base64 48`)'
+  );
+}
+
+/**
+ * BUG-017: COOKIE_SECURE must be "true" in production, otherwise session
+ * cookies travel over plaintext HTTP and can be sniffed off the wire.
+ * We do not auto-default to true on production because explicit operator
+ * opt-in prevents accidental flips during migration.
+ */
+function readCookieSecure(env: EnvSource): boolean {
+  const parsed = env.COOKIE_SECURE === undefined ? false : env.COOKIE_SECURE === 'true';
+  if (env.NODE_ENV === 'production' && !parsed) {
+    throw new Error(
+      'COOKIE_SECURE must be set to "true" in production (sessions must travel over HTTPS only)'
+    );
+  }
+  return parsed;
+}
+
 export function loadConfigFrom(env: EnvSource): AppConfig {
   const publicBaseUrl = requireEnv(env, 'PUBLIC_BASE_URL', 'http://localhost:4000/uploads');
 
@@ -72,8 +108,8 @@ export function loadConfigFrom(env: EnvSource): AppConfig {
     mysqlUser: optionalEnv(env, 'MYSQL_USER', 'root'),
     mysqlPassword: optionalEnv(env, 'MYSQL_PASSWORD', ''),
     mysqlDatabase: optionalEnv(env, 'MYSQL_DATABASE', 'trace-scope-platform'),
-    sessionSecret: requireEnv(env, 'SESSION_SECRET', 'dev-secret-change-in-production'),
-    cookieSecure: readBoolean(env.COOKIE_SECURE, false),
+    sessionSecret: readSessionSecret(env),
+    cookieSecure: readCookieSecure(env),
     adminBootstrapUsername: optionalEnv(env, 'ADMIN_BOOTSTRAP_USERNAME', 'admin'),
     adminBootstrapPassword: optionalEnv(env, 'ADMIN_BOOTSTRAP_PASSWORD', 'admin123'),
     corsOrigins: readCsv(env.CORS_ORIGINS, [publicBaseUrl]),

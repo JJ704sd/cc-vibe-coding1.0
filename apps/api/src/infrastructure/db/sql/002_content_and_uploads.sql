@@ -19,6 +19,10 @@ CREATE TABLE project (
   status VARCHAR(20) NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  -- BUG-019: composite index covers `WHERE status = ?` (public API
+  -- listings) and `ORDER BY created_at DESC` (default sort) in one
+  -- B-tree, eliminating the previous full-table scan at >1k rows.
+  KEY idx_project_status_created_at (status, created_at),
   CONSTRAINT fk_project_cover_upload FOREIGN KEY (cover_upload_file_id) REFERENCES upload_file(id),
   CONSTRAINT chk_project_status CHECK (status IN ('draft', 'published'))
 );

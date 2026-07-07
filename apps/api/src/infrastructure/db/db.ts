@@ -1,10 +1,16 @@
 import mysql from 'mysql2/promise';
+import type { ResultSetHeader } from 'mysql2';
 import type { AppConfig } from '../../app/config.js';
 
 export type DbPool = {
   query: <T>(sql: string, params?: unknown[]) => Promise<T[]>;
   queryOne: <T>(sql: string, params?: unknown[]) => Promise<T | null>;
-  execute: (sql: string, params?: unknown[]) => Promise<void>;
+  /**
+   * Run a write statement (INSERT / UPDATE / DELETE / DDL). The returned
+   * value is mysql2's ResultSetHeader — cast to access affectedRows /
+   * insertId / warningStatus. For SELECTs use `query` instead.
+   */
+  execute: (sql: string, params?: unknown[]) => Promise<ResultSetHeader>;
   getConnection: () => Promise<mysql.PoolConnection>;
   persist: () => Promise<void>;
 };
@@ -69,8 +75,9 @@ export const initDb = async (config: AppConfig): Promise<DbPool> => {
       const result = rows as T[];
       return result[0] ?? null;
     },
-    execute: async (sql: string, params: unknown[] = []): Promise<void> => {
-      await mysqlPoolAny.execute(sql, params);
+    execute: async (sql: string, params: unknown[] = []): Promise<ResultSetHeader> => {
+      const [result] = await mysqlPoolAny.execute(sql, params);
+      return result as ResultSetHeader;
     },
     getConnection: () => mysqlPool.getConnection(),
     persist: async () => {

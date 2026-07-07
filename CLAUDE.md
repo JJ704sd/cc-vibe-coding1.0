@@ -49,18 +49,25 @@ cd apps/api && npm run migrate    # 运行数据库迁移
 apps/
 ├── api/                          # Fastify 后端（端口 4000）
 │   └── src/
-│       ├── modules/              # 功能模块（auth, projects, media-sets, locations, routes, uploads, public, system）
+│       ├── modules/              # 功能模块：auth, projects, media-sets, media-images,
+│       │                         #   locations, routes, uploads, public, system（共 9 个）
 │       │   └── {routes, service, repository, types, *.test}.ts
 │       ├── infrastructure/       # DB pool、storage、helpers
 │       └── app/                 # buildServer.ts、config.ts、errors.ts
 └── web/                         # React + Vite 前端（端口 5173）
     └── src/
         ├── app/routes/          # 页面路由（public/、admin/）
-        ├── components/           # 共享组件（map/、media/、project/）
-        ├── features/             # 按域划分（map/、gallery/、projects/、media/）
+        ├── components/           # 共享组件：admin, common, gallery, map,
+        │                         #   media, project, site（共 7 个）
+        ├── features/             # 按域划分：admin, auth, gallery, locations,
+        │                         #   map, media, projects, routes（共 8 个）
         │   └── {api, model, projection}/  # API hooks、viewModel、投影逻辑
+        ├── lib/                  # 跨域工具（dispose, math, 等）
         ├── services/storage/     # adminDataStore（localStorage）
         └── services/api/         # httpClient（/api 前缀）
+
+# 实际目录结构以 `ls apps/api/src/modules`、`ls apps/web/src/components`、
+# `ls apps/web/src/features` 为准；本树只列主要子目录，不含所有嵌套文件。
 ```
 
 ### 数据模型（强约束，不可改变）
