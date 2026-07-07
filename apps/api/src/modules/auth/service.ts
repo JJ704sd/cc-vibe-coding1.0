@@ -26,6 +26,7 @@ export class AuthService {
       findUserByUsername(username: string): Promise<{ id: string; username: string; passwordHash: string; role: 'admin'; isActive: boolean } | null>;
       insertSession(input: { id: string; userId: string; sessionTokenHash: string; expiresAt: Date; ipAddress: string | null; userAgent: string | null }): Promise<void>;
       findSessionByHash(sessionTokenHash: string): Promise<{ userId: string; username: string; role: 'admin'; expiresAt: Date } | null>;
+      touchSessionLastSeen(sessionTokenHash: string, now: Date): Promise<void>;
       deleteSessionByHash(sessionTokenHash: string): Promise<void>;
     },
   ) {}
@@ -65,10 +66,25 @@ export class AuthService {
   }
 
   async getSession(input: { sessionToken: string }) {
-    const session = await this.repository.findSessionByHash(hashSessionToken(input.sessionToken));
+    const sessionTokenHash = hashSessionToken(input.sessionToken);
+    const session = await this.repository.findSessionByHash(sessionTokenHash);
     if (!session || session.expiresAt.getTime() < Date.now()) {
       return null;
     }
+
+    // BUG-043: fire-and-forget last_seen_at update so admin-session
+    // monitoring reflects actual recent activity. We intentionally do
+    // NOT await: the response to the caller should not block on this
+    // write, and a transient DB error must not break authentication.
+    // Errors are swallowed because session validation has already
+    // succeeded; if the UPDATE fails we'll just see a stale
+    // last_seen_at until the next hit.
+    void this.repository
+      .touchSessionLastSeen(sessionTokenHash, new Date())
+      .catch(() => {
+        /* swallow: see BUG-043 comment above */
+      });
+
     return { user: { id: session.userId, username: session.username, role: session.role } };
   }
 

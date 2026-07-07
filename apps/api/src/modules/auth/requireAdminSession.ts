@@ -28,6 +28,9 @@ export function createRequireAdminSession(authService?: AdminAuthService) {
     const session = await authService.getSession({ sessionToken: token });
     if (!session) {
       reply.status(401).send({ error: 'Admin session required' });
+      // BUG-044: explicit `return reply` so the failure path doesn't
+      // implicitly rely on Fastify's undefined-return = continue semantics.
+      return reply;
     }
   };
 }

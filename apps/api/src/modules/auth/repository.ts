@@ -71,6 +71,18 @@ export function createAuthRepository() {
       };
     },
 
+    // BUG-043: last_seen_at was previously only set on INSERT and never
+    // updated, so the field had no signal value. Callers invoke this
+    // fire-and-forget after a successful getSession so admin-session
+    // monitoring (e.g. "find dormant sessions") can rely on the column.
+    async touchSessionLastSeen(sessionTokenHash: string, now: Date) {
+      const pool = getPool();
+      await pool.execute(
+        'UPDATE admin_session SET last_seen_at = ? WHERE session_token_hash = ?',
+        [now, sessionTokenHash],
+      );
+    },
+
     async deleteSessionByHash(sessionTokenHash: string) {
       const pool = getPool();
       await pool.execute(

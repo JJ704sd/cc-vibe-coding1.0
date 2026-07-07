@@ -11,6 +11,33 @@
   file_server
 
   header {
+    # BUG-032: tighten the security response headers. The previous
+    # configuration only had three legacy headers; everything below is
+    # additive hardening and was previously missing.
+
+    # HSTS — pin HTTPS for one year including subdomains. The first hit
+    # after deploy upgrades the browser, so this only matters once the
+    # certificate has been issued for the domain.
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+    # CSP — same-origin everything except Google Fonts (CSS + font
+    # files) which index.html preloads. 'unsafe-inline' for style-src
+    # matches Vite's emitted inline styles and the splash gradient in
+    # index.html; switching to nonce-based delivery would require a
+    # larger refactor. We do NOT add 'unsafe-eval' — Three.js and the
+    # rest of the stack compile to JS, not eval.
+    Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; media-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'"
+
+    # Permissions-Policy — opt every powerful feature out by default.
+    # This site doesn't use geolocation / camera / etc., so we deny
+    # them outright rather than allow same-origin only.
+    Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()"
+
+    # Strip the Server header (Caddy already omits it by default, but
+    # we make the intent explicit so a future module doesn't start
+    # leaking it).
+    -Server
+
     X-Content-Type-Options "nosniff"
     Referrer-Policy "strict-origin-when-cross-origin"
     X-Frame-Options "SAMEORIGIN"
