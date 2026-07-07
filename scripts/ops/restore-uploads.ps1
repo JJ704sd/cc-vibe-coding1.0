@@ -14,8 +14,34 @@ $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $stagingRoot = Join-Path $parentDir "restore-$leafName-$timestamp"
 $previousRoot = "$UploadRoot.pre-restore-$timestamp"
 
+# BUG-034: zip-slip defence. Expand-Archive resolves `..` segments, so
+# an archive with `../../../etc/passwd` as an entry would extract
+# outside the staging directory and potentially overwrite sensitive
+# files once we move staging into place. Validate every entry's path
+# stays inside the staging root BEFORE expanding.
 if ($PSCmdlet.ShouldProcess($UploadRoot, "Restore uploads from $ArchiveFile")) {
   New-Item -ItemType Directory -Force -Path $stagingRoot | Out-Null
+  $stagingRootFull = (Resolve-Path $stagingRoot).Path
+  $archive = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $ArchiveFile).Path)
+  try {
+    foreach ($entry in $archive.Entries) {
+      # Entry.FullName is the path inside the archive using '/' as
+      # separator. Reject absolute paths (e.g. `/etc/passwd`) and any
+      # path that resolves outside the staging root after we re-join
+      # it on the local filesystem.
+      if ($entry.FullName.StartsWith('/') -or $entry.FullName.StartsWith('\')) {
+        throw "Refusing zip entry with absolute path: $($entry.FullName)"
+      }
+      $candidate = Join-Path $stagingRootFull ($entry.FullName -replace '/', [IO.Path]::DirectorySeparatorChar)
+      $candidateFull = [System.IO.Path]::GetFullPath($candidate)
+      if (-not $candidateFull.StartsWith($stagingRootFull, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Refusing zip entry that escapes staging root: $($entry.FullName) -> $candidateFull"
+      }
+    }
+  } finally {
+    $archive.Dispose()
+  }
+
   Expand-Archive -LiteralPath $ArchiveFile -DestinationPath $stagingRoot -Force
 
   if (Test-Path $UploadRoot) {

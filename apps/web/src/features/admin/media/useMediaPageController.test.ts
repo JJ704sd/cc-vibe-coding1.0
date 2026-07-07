@@ -154,4 +154,19 @@ describe('useMediaPageController', () => {
     expect(stubToast.error).toHaveBeenCalledWith('请先选择一个媒体组');
     expect(mediaImagesApi.create).not.toHaveBeenCalled();
   });
+
+  // BUG-037 regression: confirmImageDelete must early-return when no
+  // target is selected, never dereferencing a non-null-asserted
+  // imageDeleteTarget!.id that would throw after the dialog closes.
+  it('confirmImageDelete is a no-op when no image delete target is set', async () => {
+    const { result } = renderHook(() => useMediaPageController());
+
+    await act(async () => {
+      await result.current.confirmImageDelete();
+    });
+
+    expect(mediaImagesApi.delete).not.toHaveBeenCalled();
+    expect(stubToast.error).not.toHaveBeenCalled();
+    expect(stubToast.success).not.toHaveBeenCalled();
+  });
 });

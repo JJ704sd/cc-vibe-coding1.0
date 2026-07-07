@@ -6,8 +6,25 @@ import { createMediaImageRepository } from './repository.js';
 
 export type { MediaImageRow };
 
+/**
+ * Subset of UploadService that the cascade-cleanup path needs. We
+ * declare just the method we use so tests can mock it without pulling
+ * in the full uploads module.
+ */
+type UploadCascadeService = {
+  deleteUploadForce(id: string): Promise<void>;
+};
+
 export class MediaImageService {
   private readonly repository = createMediaImageRepository();
+  private readonly uploadsService: UploadCascadeService | null;
+
+  constructor(uploadsService: UploadCascadeService | null = null) {
+    // Optional so existing unit tests that don't pass it still work —
+    // the cascade-cleanup branch is simply skipped when no uploader is
+    // injected (e.g. in tests that don't exercise the delete path).
+    this.uploadsService = uploadsService;
+  }
 
   async findAll(mediaSetId?: string): Promise<MediaImageRow[]> {
     return this.repository.findAll(mediaSetId);
@@ -103,5 +120,22 @@ export class MediaImageService {
       throw Object.assign(new AppError('Media image not found', 404), { code: 'NOT_FOUND' });
     }
     await this.repository.deleteMediaImage(id);
+
+    // BUG-031: media_image is the only FK on upload_file that points
+    // directly without an ON DELETE clause — deleting the media_image
+    // row leaves the upload_file row orphaned. After the media_image
+    // is gone, the upload_file has zero references and is safe to
+    // purge. Best-effort: a failed cleanup is logged but does not
+    // surface to the caller, because the parent delete succeeded.
+    if (this.uploadsService) {
+      try {
+        await this.uploadsService.deleteUploadForce(existing.upload_file_id);
+      } catch (err) {
+        console.warn(
+          `[media-images.delete] failed to cascade-clean upload_file ${existing.upload_file_id}:`,
+          err,
+        );
+      }
+    }
   }
 }

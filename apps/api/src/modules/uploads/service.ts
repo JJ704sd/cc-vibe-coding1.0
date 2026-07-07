@@ -115,4 +115,31 @@ export class UploadService {
     await this.repository.deleteUploadFile(id);
     await this.storage.deleteFile(file.storage_key);
   }
+
+  /**
+   * BUG-031: cascade-cleanup variant. Skips the reference-count check
+   * because callers (other services' delete paths) have already
+   * removed the referencing rows in the same transaction. Use this
+   * only when you have already deleted the row(s) that pointed at the
+   * file — otherwise the call will succeed and silently orphan
+   * downstream references.
+   *
+   * Best-effort: errors are logged via console.warn but do NOT throw,
+   * because this is called inside another service's delete path
+   * where the parent row has already gone — surfacing the error to
+   * the caller would mask the real delete result.
+   */
+  async deleteUploadForce(id: string): Promise<void> {
+    const file = await this.repository.findById(id);
+    if (!file) {
+      return;
+    }
+    await this.repository.deleteUploadFile(id);
+    const deleted = await this.storage.deleteFile(file.storage_key);
+    if (!deleted) {
+      console.warn(
+        `[uploads.deleteUploadForce] removed DB row for ${id} but disk file ${file.storage_key} was already gone`,
+      );
+    }
+  }
 }

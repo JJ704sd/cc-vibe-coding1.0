@@ -116,23 +116,27 @@ export const buildServer = async (input?: {
   }
 
   // Register routes
+  const uploadRepo = createUploadRepository();
+  const uploadService = new UploadService(uploadRepo, storage, input?.maxUploadBytes);
+
+  // BUG-031: project / media-set / media-image service each need a
+  // reference to uploadService so their delete paths can cascade-clean
+  // orphan upload_file rows. We declare uploadService first so it can
+  // be injected into the constructors below.
   const projectRepo = createProjectRepository();
-  const projectService = new ProjectService(projectRepo);
+  const projectService = new ProjectService(projectRepo, uploadService);
 
   const mediaSetRepo = createMediaSetRepository();
-  const mediaSetService = new MediaSetService(mediaSetRepo);
+  const mediaSetService = new MediaSetService(mediaSetRepo, uploadService);
 
   const mediaImageRepo = createMediaImageRepository();
-  const mediaImageService = new MediaImageService();
+  const mediaImageService = new MediaImageService(uploadService);
 
   const routeRepo = createRouteRepository();
   const routeService = new RouteService(routeRepo);
 
   const publicRepo = createPublicRepository();
   const publicService = new PublicService(publicRepo, storage);
-
-  const uploadRepo = createUploadRepository();
-  const uploadService = new UploadService(uploadRepo, storage, input?.maxUploadBytes);
 
   await server.register(async (adminApp) => {
     adminApp.addHook("preHandler", createRequireAdminSession(input?.authService));

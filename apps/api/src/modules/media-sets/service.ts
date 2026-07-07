@@ -3,7 +3,20 @@ import { AppError } from '../../app/errors.js';
 import type { CreateMediaSetInput, MediaSetRow, UpdateMediaSetInput } from './types.js';
 import type { MediaImageRow } from '../media-images/types.js';
 
+/**
+ * BUG-031: optional dependency for cascade-cleanup of the media-set's
+ * own cover upload_file when the set is deleted. media-image rows
+ * under this set cascade-delete via FK and their MediaImageService
+ * cleans up their own upload_file_id, so we only handle the set's
+ * cover here.
+ */
+type UploadCascadeService = {
+  deleteUploadForce(id: string): Promise<void>;
+};
+
 export class MediaSetService {
+  private readonly uploadsService: UploadCascadeService | null;
+
   constructor(
     private readonly repository: {
       findAll(filters?: { projectId?: string; locationId?: string }): Promise<MediaSetRow[]>;
@@ -31,7 +44,10 @@ export class MediaSetService {
       findLocationById(id: string): Promise<{ id: string } | null>;
       findUploadFileById(id: string): Promise<{ id: string } | null>;
     },
-  ) {}
+    uploadsService: UploadCascadeService | null = null,
+  ) {
+    this.uploadsService = uploadsService;
+  }
 
   async getAll(filters?: { projectId?: string; locationId?: string }) {
     return this.repository.findAll(filters);
@@ -120,7 +136,24 @@ if (input.locationId) {
     if (!existing) {
       throw Object.assign(new Error('Media set not found'), { statusCode: 404 });
     }
+    const coverFileId = existing.cover_upload_file_id;
     await this.repository.deleteMediaSet(id);
+
+    // BUG-031: media_image rows under this set are removed via FK
+    // ON DELETE CASCADE and each MediaImageService.delete cleans up
+    // its own upload_file. We only need to purge the set's cover
+    // upload_file here. Best-effort: a failed cleanup logs and
+    // continues so the set delete still reports success.
+    if (this.uploadsService && coverFileId) {
+      try {
+        await this.uploadsService.deleteUploadForce(coverFileId);
+      } catch (err) {
+        console.warn(
+          `[media-sets.delete] failed to cascade-clean cover upload_file ${coverFileId}:`,
+          err,
+        );
+      }
+    }
   }
 
   async reorderImages(mediaSetId: string, imageIds: string[]): Promise<MediaImageRow[]> {

@@ -8,7 +8,18 @@ const slugify = (text: string): string =>
     .replace(/^-+|-+$/g, '')
     .slice(0, 200);
 
+/**
+ * BUG-031: optional dependency for cascade-cleanup of the project's
+ * cover upload_file when the project itself is deleted. Optional so
+ * existing tests that don't pass it still work.
+ */
+type UploadCascadeService = {
+  deleteUploadForce(id: string): Promise<void>;
+};
+
 export class ProjectService {
+  private readonly uploadsService: UploadCascadeService | null;
+
   constructor(
     private readonly repository: {
       findAll(options?: FindProjectsOptions): Promise<Project[]>;
@@ -24,7 +35,10 @@ export class ProjectService {
       countRoutesByProjectId(projectId: string): Promise<number>;
       countRouteLocationsByProjectId(projectId: string): Promise<number>;
     },
-  ) {}
+    uploadsService: UploadCascadeService | null = null,
+  ) {
+    this.uploadsService = uploadsService;
+  }
 
   async findAll(options: FindProjectsOptions = {}): Promise<Project[]> {
     if (options.status && options.status !== 'draft' && options.status !== 'published') {
@@ -122,7 +136,24 @@ export class ProjectService {
     if (!existing) {
       return false;
     }
+    const coverFileId = existing.coverUploadFileId;
     await this.repository.deleteProject(id);
+
+    // BUG-031: deleting a project cascades to its locations, media
+    // sets, media images, etc. via FK ON DELETE CASCADE / SET NULL.
+    // The project's own cover_upload_file row is not cascaded, so
+    // purge it now. Best-effort: log on failure but don't throw —
+    // the project delete has already succeeded.
+    if (this.uploadsService && coverFileId) {
+      try {
+        await this.uploadsService.deleteUploadForce(coverFileId);
+      } catch (err) {
+        console.warn(
+          `[projects.delete] failed to cascade-clean cover upload_file ${coverFileId}:`,
+          err,
+        );
+      }
+    }
     return true;
   }
 
