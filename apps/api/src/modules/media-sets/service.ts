@@ -52,9 +52,19 @@ export class MediaSetService {
     const project = await this.repository.findProjectById(input.projectId);
     if (!project) throw new AppError('project_id not found', 400);
 
-    if (input.locationId) {
+    // BUG-046: empty-string `locationId` previously slipped past the
+// `if (input.locationId)` truthiness check (which is falsy for `''`)
+// and reached the FK constraint as an empty string, producing a 500.
+// Treat empty string as a validation error up front.
+if (input.locationId === '') {
+  throw new AppError('location_id must not be an empty string', 400);
+}
+if (input.locationId) {
       const location = await this.repository.findLocationById(input.locationId);
       if (!location) throw new AppError('location_id not found', 400);
+    }
+    if (input.coverUploadFileId === '') {
+      throw new AppError('cover_upload_file_id must not be an empty string', 400);
     }
     if (input.coverUploadFileId) {
       const cover = await this.repository.findUploadFileById(input.coverUploadFileId);
@@ -80,6 +90,9 @@ export class MediaSetService {
 
     if (input.type && input.type !== 'spin360' && input.type !== 'gallery') {
       throw new AppError("type must be 'spin360' or 'gallery'", 400);
+    }
+    if (input.locationId === '') {
+      throw new AppError('location_id must not be an empty string', 400);
     }
     if (input.locationId) {
       const location = await this.repository.findLocationById(input.locationId);

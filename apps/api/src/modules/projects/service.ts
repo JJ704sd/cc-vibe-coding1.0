@@ -67,15 +67,12 @@ export class ProjectService {
     const id = randomUUID();
     const slug = input.slug ?? slugify(input.title);
 
-    // Check slug uniqueness
-    const existing = await this.repository.findBySlug(slug);
-    if (existing) {
-      throw Object.assign(new Error('Slug already in use'), {
-        code: 'SLUG_CONFLICT',
-        statusCode: 409,
-      });
-    }
-
+    // BUG-045: skip the pre-flight findBySlug check entirely — it had
+    // a TOCTOU race window where two concurrent POSTs with the same
+    // slug both passed the check, then both called INSERT and the
+    // second one bubbled a UNIQUE-key violation up as a 500. Now we
+    // rely on the UNIQUE KEY declared on project.slug and translate
+    // the resulting ER_DUP_ENTRY into a 409 in the repository layer.
     const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
     return this.repository.upsertProject({ ...input, id, slug, now });
   }
@@ -103,21 +100,14 @@ export class ProjectService {
       }
     }
 
-    const newSlug = input.slug ?? existing.slug;
-    if (input.slug && input.slug !== existing.slug) {
-      const conflict = await this.repository.findBySlug(input.slug);
-      if (conflict) {
-        throw Object.assign(new Error('Slug already in use'), {
-          code: 'SLUG_CONFLICT',
-          statusCode: 409,
-        });
-      }
-    }
-
+    // BUG-045 (update path): same TOCTOU race for slug changes — rely on
+    // the UNIQUE KEY constraint and let the repository translate the
+    // duplicate-key error into a 409 instead of doing a pre-flight
+    // findBySlug that two concurrent UPDATEs could both pass.
     const now = new Date().toISOString().slice(0, 19).replace('T', ' ');
     return this.repository.updateProject(id, {
       title: input.title,
-      slug: input.slug ? newSlug : undefined,
+      slug: input.slug ?? undefined,
       summary: input.summary,
       description: input.description,
       status: input.status,

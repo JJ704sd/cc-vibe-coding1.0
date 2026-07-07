@@ -34,13 +34,26 @@ export async function registerAuthRoutes(
   app.post('/api/admin/login', async (request, reply) => {
     const ip = request.ip ?? 'unknown';
     const now = Date.now();
+
+    // BUG-030: cleanup expired entries on every request, not just when
+    // the map exceeds 100 entries. The previous `if (size > 100)` guard
+    // meant low-traffic deployments never cleaned up at all, so each
+    // distinct attacker IP left a permanent entry behind until process
+    // restart. This is O(N) per request with N typically < 100, which
+    // is negligible.
+    //
+    // Multi-instance deployments still have a per-process limit (the
+    // effective rate limit becomes N_instances × max). Sharing state
+    // across processes needs an external store (Redis or similar);
+    // that's a larger refactor tracked separately.
+    cleanupExpired(now);
+
     const existing = loginAttemptsByIp.get(ip);
     if (!existing || now - existing.windowStart >= loginRateLimit.timeWindow) {
       loginAttemptsByIp.set(ip, { count: 1, windowStart: now });
     } else {
       existing.count += 1;
       if (existing.count > loginRateLimit.max) {
-        if (loginAttemptsByIp.size > 100) cleanupExpired(now);
         reply.status(429);
         return { error: 'Too many login attempts' };
       }

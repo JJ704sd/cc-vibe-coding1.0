@@ -21,6 +21,16 @@ export class LocationService {
   }
 
   private validateCoordinates(latitude: number, longitude: number): void {
+    // BUG-047: NaN slipped past the range checks because every
+    // comparison against NaN is false, so `Number(existing.latitude)`
+    // could push garbage into the DB. Validate finiteness before the
+    // range check.
+    if (Number.isNaN(latitude)) {
+      throw Object.assign(new Error('latitude must be a finite number'), { statusCode: 400 });
+    }
+    if (Number.isNaN(longitude)) {
+      throw Object.assign(new Error('longitude must be a finite number'), { statusCode: 400 });
+    }
     if (latitude < -90 || latitude > 90) {
       throw Object.assign(new Error("latitude must be between -90 and 90"), { statusCode: 400 });
     }

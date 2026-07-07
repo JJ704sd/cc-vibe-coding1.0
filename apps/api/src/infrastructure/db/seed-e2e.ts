@@ -40,6 +40,25 @@ const FIXTURE_TABLES = [
   'admin_session',
 ] as const;
 
+// BUG-049: explicit per-table DELETE statements instead of
+// `DELETE FROM \`${table}\`` template interpolation. Today every value
+// is a `const` literal so there's no injection risk, but the pattern is
+// fragile — a future maintainer who reads FIXTURE_TABLES as
+// `string[]` and pushes a user-supplied name would silently ship a SQL
+// injection. A static Record of fully-qualified statements makes that
+// mistake a compile-time error.
+const FIXTURE_DELETES: Record<typeof FIXTURE_TABLES[number], string> = {
+  route_location: 'DELETE FROM `route_location`',
+  route: 'DELETE FROM `route`',
+  media_image: 'DELETE FROM `media_image`',
+  media_set: 'DELETE FROM `media_set`',
+  location: 'DELETE FROM `location`',
+  project_tag: 'DELETE FROM `project_tag`',
+  project: 'DELETE FROM `project`',
+  upload_file: 'DELETE FROM `upload_file`',
+  admin_session: 'DELETE FROM `admin_session`',
+};
+
 async function main(): Promise<void> {
   const config = loadConfig();
 
@@ -65,7 +84,7 @@ async function main(): Promise<void> {
     // (and admin sessions) on each run. The bootstrap admin row is kept
     // because we never include `admin_user` in FIXTURE_TABLES.
     for (const table of FIXTURE_TABLES) {
-      await pool.execute(`DELETE FROM ${table}`);
+      await pool.execute(FIXTURE_DELETES[table]);
     }
   } finally {
     await pool.query('SET FOREIGN_KEY_CHECKS = 1');

@@ -53,6 +53,57 @@ const resolveSafePath = (rootDir: string, storageKey: string): string => {
   return absolutePath;
 };
 
+// BUG-048: mime type must come from file content, not the filename
+// extension. A malicious upload named `evil.exe` → `evil.jpg` would
+// otherwise be served back to clients as image/jpeg (the upload flow
+// trusts the filename during ingest, then trusts it again on read).
+// We sniff the first 4–12 bytes for known image/container signatures.
+// Any buffer that doesn't match a known signature falls back to the
+// extension-based guess and finally to application/octet-stream.
+const sniffMimeTypeFromMagicBytes = (buffer: Buffer): string | null => {
+  if (buffer.length < 4) return null;
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (
+    buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47
+  ) {
+    return "image/png";
+  }
+  // JPEG: FF D8 FF
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return "image/jpeg";
+  }
+  // GIF: 47 49 46 38 (37 or 39)
+  if (
+    buffer[0] === 0x47 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x38
+  ) {
+    return "image/gif";
+  }
+  // WebP: "RIFF" .... "WEBP"
+  if (
+    buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+    buffer.length >= 12 &&
+    buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50
+  ) {
+    return "image/webp";
+  }
+  return null;
+};
+
+const EXT_TO_MIME: Record<string, string> = {
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
+};
+
+const extMimeType = (storageKey: string): string | null => {
+  const ext = extname(storageKey).toLowerCase();
+  return EXT_TO_MIME[ext] ?? null;
+};
+
 export const createLocalFileStorage = ({
   rootDir,
   publicBaseUrl
@@ -94,19 +145,15 @@ export const createLocalFileStorage = ({
         return null;
       }
       try {
-        await readFile(absolutePath);
-        // Determine mime type from extension
-        const ext = extname(storageKey).toLowerCase();
-        const mimeTypeMap: Record<string, string> = {
-          ".jpg": "image/jpeg",
-          ".jpeg": "image/jpeg",
-          ".png": "image/png",
-          ".gif": "image/gif",
-          ".webp": "image/webp",
-          ".mp4": "video/mp4",
-          ".webm": "video/webm",
-        };
-        const mimeType = mimeTypeMap[ext] || "application/octet-stream";
+        // BUG-048: read the file once so we can sniff its actual content
+        // for mime type, then stream the same bytes back to the client.
+        // Reading into memory is bounded by `MAX_UPLOAD_BYTES` (10 MiB by
+        // default), which is small enough for the io buffer.
+        const buffer = await readFile(absolutePath);
+        const mimeType =
+          sniffMimeTypeFromMagicBytes(buffer) ??
+          extMimeType(storageKey) ??
+          "application/octet-stream";
         const stream = createReadStream(absolutePath);
         return { stream, mimeType };
       } catch {

@@ -16,6 +16,18 @@ function rowToProject(row: ProjectRow, tags: string[] = []): Project {
   };
 }
 
+// BUG-045: MySQL exposes a duplicate-key violation as an Error whose
+// `code` property is `ER_DUP_ENTRY`. We match on that code rather than
+// the message because the message text is locale-dependent.
+function isDuplicateSlugError(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'code' in err &&
+    (err as { code?: unknown }).code === 'ER_DUP_ENTRY'
+  );
+}
+
 export function createProjectRepository() {
   return {
     async findAll(options: FindProjectsOptions = {}): Promise<Project[]> {
@@ -72,21 +84,35 @@ export function createProjectRepository() {
 
     async upsertProject(input: CreateProjectInput & { id: string; slug: string; now: string }): Promise<Project> {
       const pool = getPool();
-      await pool.execute(
-        `INSERT INTO project (id, title, slug, summary, description, cover_upload_file_id, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          input.id,
-          input.title,
-          input.slug,
-          input.summary,
-          input.description,
-          input.coverUploadFileId ?? null,
-          input.status,
-          input.now,
-          input.now,
-        ],
-      );
+      try {
+        await pool.execute(
+          `INSERT INTO project (id, title, slug, summary, description, cover_upload_file_id, status, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            input.id,
+            input.title,
+            input.slug,
+            input.summary,
+            input.description,
+            input.coverUploadFileId ?? null,
+            input.status,
+            input.now,
+            input.now,
+          ],
+        );
+      } catch (err) {
+        // BUG-045: MySQL signals a UNIQUE-key violation on project.slug
+        // as ER_DUP_ENTRY. Translate it into a SLUG_CONFLICT 409 so the
+        // API caller sees the same error shape whether the conflict is
+        // detected pre-flight or after the race resolution.
+        if (isDuplicateSlugError(err)) {
+          throw Object.assign(new Error('Slug already in use'), {
+            code: 'SLUG_CONFLICT',
+            statusCode: 409,
+          });
+        }
+        throw err;
+      }
 
       if (input.tags && input.tags.length > 0) {
         await this.insertTags(input.id, input.tags);
@@ -112,27 +138,38 @@ export function createProjectRepository() {
       const pool = getPool();
       // Use empty string to allow clearing cover_upload_file_id
       const newCoverId = (input.coverUploadFileId === '' ? null : (input.coverUploadFileId ?? null));
-      await pool.execute(
-        `UPDATE project SET
-          title = COALESCE(?, title),
-          slug = COALESCE(?, slug),
-          summary = COALESCE(?, summary),
-          description = COALESCE(?, description),
-          status = COALESCE(?, status),
-          cover_upload_file_id = ?,
-          updated_at = ?
-         WHERE id = ?`,
-        [
-          input.title ?? null,
-          input.slug ?? null,
-          input.summary ?? null,
-          input.description ?? null,
-          input.status ?? null,
-          newCoverId,
-          input.now,
-          id,
-        ],
-      );
+      try {
+        await pool.execute(
+          `UPDATE project SET
+            title = COALESCE(?, title),
+            slug = COALESCE(?, slug),
+            summary = COALESCE(?, summary),
+            description = COALESCE(?, description),
+            status = COALESCE(?, status),
+            cover_upload_file_id = ?,
+            updated_at = ?
+           WHERE id = ?`,
+          [
+            input.title ?? null,
+            input.slug ?? null,
+            input.summary ?? null,
+            input.description ?? null,
+            input.status ?? null,
+            newCoverId,
+            input.now,
+            id,
+          ],
+        );
+      } catch (err) {
+        // BUG-045: same UNIQUE-key translation as upsertProject.
+        if (isDuplicateSlugError(err)) {
+          throw Object.assign(new Error('Slug already in use'), {
+            code: 'SLUG_CONFLICT',
+            statusCode: 409,
+          });
+        }
+        throw err;
+      }
 
       if (input.tags !== undefined) {
         await this.deleteTags(id);
