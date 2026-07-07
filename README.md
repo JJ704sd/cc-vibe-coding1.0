@@ -184,7 +184,7 @@ npm run test:e2e
 - API tests: **13 文件 / 89 用例** 全过
 - API build: ✅（`tsc` 通过）
 - Web tests: **34 文件 / 145 用例** 全过（`vitest.config.ts` 已 exclude `e2e/**`；本轮清理 6 个冗余自指测试 -6 文件 -14 用例）
-- Web build: ✅（`vite build` 干净，无 chunk size warning；首屏 JS ~9.74 KB，首屏 CSS 12.53 KB；`vendor-maplibre` 1.05 MB 仅在地图能力加载时引入）
+- Web build: ✅（`vite build` 有一个**已知**的 `Circular chunk: vendor -> vendor-react -> vendor` warning，来自 `vite.config.ts` 的 manual chunks 配置，与 chunk size 无关、无害；首屏 JS ~9.56 KB，首屏 CSS 12.53 KB；`vendor-maplibre` 1.05 MB 仅在地图能力加载时引入）
 - TODO / FIXME / HACK / deprecated 残留: 0 处
 
 继续开发前请重新跑一次，不要只信任历史记录。

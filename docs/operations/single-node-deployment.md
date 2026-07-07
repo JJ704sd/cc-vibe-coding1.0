@@ -1,5 +1,7 @@
 # Trace Scope Single-Node Deployment
 
+> **跨机器部署提示**：本指南示例路径用 `$RepoRoot` 占位符，部署时请把它替换成实际仓库根目录的绝对路径（例如 Linux 上可能是 `/opt/trace-scope-platform`，macOS 上可能是 `/Users/you/Projects/trace-scope-platform`）。脚本本身 (`scripts/ops/*.ps1` + `ecosystem.config.cjs`) 会自动从 `$PSScriptRoot` / `__dirname` 解析项目根，无需你硬编码路径。
+
 ## Runtime Shape
 
 - Caddy serves the built frontend
@@ -10,16 +12,16 @@
 ## 1. Install dependencies
 
 ```powershell
-Set-Location 'D:\VS vibe coding files\trace-scope-platform\apps\api'
+Set-Location "$RepoRoot\apps\api"
 npm install
-Set-Location 'D:\VS vibe coding files\trace-scope-platform\apps\web'
+Set-Location "$RepoRoot\apps\web"
 npm install
 ```
 
 ## 2. Prepare the production env file
 
 ```powershell
-Copy-Item apps\api\.env.production.example apps\api\.env.production
+Copy-Item "$RepoRoot\apps\api\.env.production.example" "$RepoRoot\apps\api\.env.production"
 ```
 
 Set these values before first start:
@@ -37,13 +39,13 @@ Set these values before first start:
 ## 3. Build the release
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\ops\build-release.ps1
+powershell -ExecutionPolicy Bypass -File "$RepoRoot\scripts\ops\build-release.ps1"
 ```
 
 ## 4. Start the API with PM2
 
 ```powershell
-pm2 start ecosystem.config.cjs --only trace-scope-api --env production
+pm2 start "$RepoRoot\ecosystem.config.cjs" --only trace-scope-api --env production
 pm2 save
 ```
 
@@ -51,7 +53,7 @@ pm2 save
 
 ```powershell
 $env:TRACE_SCOPE_DOMAIN='trace.example.com'
-$env:TRACE_SCOPE_WEB_ROOT='D:\VS vibe coding files\trace-scope-platform\apps\web\dist'
+$env:TRACE_SCOPE_WEB_ROOT="$RepoRoot\apps\web\dist"
 $env:TRACE_SCOPE_API_PORT='4000'
 ```
 

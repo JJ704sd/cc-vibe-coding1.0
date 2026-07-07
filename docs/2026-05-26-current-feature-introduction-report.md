@@ -795,16 +795,16 @@ npm --prefix "D:\VS vibe coding files\trace-scope-platform\apps\web" run build
 
 验证结果：
 
-- API tests：**13 个测试文件通过，72 个测试通过**。
+- API tests：**14 个测试文件通过，114 个测试通过**。
 - API build：通过。
-- Web tests：**37 个测试文件通过，140 个测试通过**。
+- Web tests：**35 个测试文件通过，160 个测试通过**。
 - Web build：通过。
-- Vite chunk size warning：手动拆包后未再出现（`vendor-maplibre` 仍最大 chunk，约 1.05 MB，但已被隔离只在地图能力加载时引入）。
+- Vite chunk warning：有一个**已知**的 `Circular chunk: vendor -> vendor-react -> vendor` warning，来自 `vite.config.ts` manual chunks 配置，与 chunk size 无关、无害（`vendor-maplibre` 仍最大 chunk，约 1.05 MB，但已被隔离只在地图能力加载时引入）。
 
 数字变化轨迹（基线 → 当前）：
 
-- API: 8 文件 / 52 用例 → 9 文件 / 62 用例（+1 文件 / +10 用例，5-24 plan 后续）→ **13 / 72**（Sprint 1 +20 用例）
-- Web: 35 / 110 → 35 / 125（5-24 plan 后续 +15 用例）→ 37 / 131（5-24 plan 完成后）→ 35 / 125（dead code 清理 -6 用例）→ **37 / 140**（Sprint 1 +21 用例 → 清理冗余 adminApi.test.ts -6 用例 → 净 +15）
+- API: 8 文件 / 52 用例 → 9 文件 / 62 用例 → **13 / 72**（Sprint 1 +20 用例）→ 13 / 103（R1+R2 ops+logic）→ 13 / 107（R5 BUG-017 +4 schema test）→ **14 / 114**（R6-R10 P1+P2 closure：service.test.ts 新增 3 个 timing test + config.test.ts 新增 4 个 schema test + 几轮边界验证）
+- Web: 35 / 110 → 35 / 125 → 37 / 131 → 35 / 125 → 37 / 140 → 38 / 163（R3b threeDispose +12）→ 38 / 164（R6 BUG-023 +1 reset）→ 38 / 167（R8 C+ GeoMediaLayer +3 cleanup test）→ **35 / 160**（R10 BUG-038 删 3 个 dead-code test file，净 -7）
 
 如果基于当前 `main` 继续开发，仍应重新运行这些命令，不要只依赖历史记录。
 

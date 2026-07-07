@@ -8,6 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 常用命令
 
+> **跨平台提示**：下面命令以 bash 形式书写（`cd a && cmd`）。在 **Windows PowerShell 5.1** 上等价写法是 `Push-Location a; cmd; Pop-Location`，或用 `npm --prefix a run dev`。如果你常用 PowerShell，可以全局把 `bash` 替换成等价的 `;`-链或 `Push-Location` 调用。
+
 ### 启动开发服务器
 
 ```bash
@@ -26,9 +28,13 @@ cd apps/web && npm test              # Web 单元/组件测试（Vitest，排除
 cd apps/web && npm run test:e2e      # Playwright E2E smoke（4 cases：home mount / projects page / public API / /health）
 ```
 
-E2E 前置：MySQL 8 运行中 + `trace_scope_e2e` 库已创建并跑过 migrations。
-Chromium 路径在 `playwright.config.ts` 中 hard-pin 到本机 cache；其他机器需设
-`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 或先 `npx playwright install`。
+> **⚠ E2E 跨机器风险（BUG-042）**：MySQL 8 运行中 + `trace_scope_e2e` 库已创建并跑过 migrations 是必备前置。
+>
+> 更关键的是 **`apps/web/playwright.config.ts` 把 Chromium executable path 硬编码到当前 sandbox 的 cache（`C:\Users\lenovo\AppData\Local\ms-playwright\chromium_headless_shell-1181\chrome-win\headless_shell.exe`）**。换机器跑 E2E 必须：
+> 1. 设环境变量 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 指向你想用的 chromium 二进制，或
+> 2. 跑 `npx playwright install` 让 Playwright 自己下载匹配版本，然后删掉 `playwright.config.ts` 里那段 `executablePath` 覆盖
+>
+> 不处理就一定 404 找不到浏览器。
 
 ### 构建
 
@@ -96,7 +102,13 @@ Project -> Location / MediaSet / Route -> MediaImage
 
 - PM2：`ecosystem.config.cjs`
 - Caddy 反向代理配置：`deploy/caddy/Caddyfile`
-- 运维脚本：`scripts/ops/*.ps1`（backup、restore、health check、build-release）
+- 运维脚本：`scripts/ops/*.ps1`，具体 6 个：
+  - `backup-mysql.ps1` — 备份 MySQL 数据库
+  - `backup-uploads.ps1` — 备份 uploads 目录
+  - `restore-mysql.ps1` — 从备份恢复 MySQL
+  - `restore-uploads.ps1` — 从 zip 备份恢复 uploads（带 zip slip 验证）
+  - `check-api-health.ps1` — 调用 `/health` 探测 API 存活
+  - `build-release.ps1` — `tsc` + `vite build` 全量打包（带 try/finally 防护 working directory 卡死）
 - 部署文档：`docs/operations/`
 
 ## 核心约束
