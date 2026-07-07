@@ -2,8 +2,7 @@ import { Suspense, lazy } from 'react';
 import { createBrowserRouter } from 'react-router-dom';
 import { PublicLayout } from '@/components/site/PublicLayout';
 import { AuthProvider } from '@/services/auth/authContext';
-import { RequireAuth } from '@/components/admin/RequireAuth';
-import { RouteTransition } from '@/components/common/RouteTransition';
+import { AdminShell } from '@/components/admin/AdminShell';
 
 const HomePage = lazy(() => import('@/app/routes/gallery/GalleryHome').then((module) => ({ default: module.GalleryHome })));
 const ProjectsPage = lazy(() => import('@/app/routes/public/projects/ProjectsPage').then((module) => ({ default: module.ProjectsPage })));
@@ -46,72 +45,31 @@ export const router = createBrowserRouter([
     ]
   },
   {
+    // Single AuthProvider + RequireAuth mount for all `/admin/*` routes
+    // (except `/admin/login`, which must be reachable without a session).
+    // Previously each child route independently wrapped its element in
+    // `<AuthProvider><RequireAuth>...</RequireAuth></AuthProvider>`, causing
+    // every admin navigation to unmount/remount AuthProvider and refire the
+    // `/api/admin/session` reconciliation effect — see BUG-013.
     path: '/admin',
-    element: (
-      <AuthProvider>
-        <RequireAuth>
-          <RouteTransition>
-            <AdminDashboardPage />
-          </RouteTransition>
-        </RequireAuth>
-      </AuthProvider>
-    )
+    element: <AdminShell />,
+    children: [
+      { index: true, element: withSuspense(<AdminDashboardPage />) },
+      { path: 'projects', element: withSuspense(<AdminProjectsPage />) },
+      { path: 'locations', element: withSuspense(<AdminLocationsPage />) },
+      { path: 'media', element: withSuspense(<AdminMediaPage />) },
+      { path: 'routes', element: withSuspense(<AdminRoutesPage />) }
+    ]
   },
   {
-    path: '/admin/projects',
-    element: (
-      <AuthProvider>
-        <RequireAuth>
-          <RouteTransition>
-            <AdminProjectsPage />
-          </RouteTransition>
-        </RequireAuth>
-      </AuthProvider>
-    )
-  },
-  {
-    path: '/admin/locations',
-    element: (
-      <AuthProvider>
-        <RequireAuth>
-          <RouteTransition>
-            <AdminLocationsPage />
-          </RouteTransition>
-        </RequireAuth>
-      </AuthProvider>
-    )
-  },
-  {
-    path: '/admin/media',
-    element: (
-      <AuthProvider>
-        <RequireAuth>
-          <RouteTransition>
-            <AdminMediaPage />
-          </RouteTransition>
-        </RequireAuth>
-      </AuthProvider>
-    )
-  },
-  {
-    path: '/admin/routes',
-    element: (
-      <AuthProvider>
-        <RequireAuth>
-          <RouteTransition>
-            <AdminRoutesPage />
-          </RouteTransition>
-        </RequireAuth>
-      </AuthProvider>
-    )
-  },
-  {
+    // Login page intentionally bypasses `RequireAuth`. It still needs its
+    // own AuthProvider so the `useAuth().login()` call works, but it mounts
+    // at most once per login flow (then redirects into `/admin/*` and the
+    // AdminShell takes over).
     path: '/admin/login',
     element: (
       <AuthProvider>
-        <RouteTransition>
-          <AdminLoginPage />
-        </RouteTransition>
+        {withSuspense(<AdminLoginPage />)}
       </AuthProvider>
     )
   }
