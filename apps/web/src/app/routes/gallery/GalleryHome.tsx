@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useDeferredValue } from 'react';
-import type { Map as MaplibreMap } from 'maplibre-gl';
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import {
   MapBase3DView,
   MediaClusterLayer,
@@ -11,199 +10,12 @@ import { GalleryImageModal } from './GalleryImageModal';
 import { GalleryMediaRail } from './GalleryMediaRail';
 import { GalleryTopBar } from './GalleryTopBar';
 import { GalleryRelationshipPanel } from './GalleryRelationshipPanel';
-import { fetchLocationImages, type PublicMediaImage } from './locationImages';
-import { useMapRelationshipData } from '@/features/map/api/useMapRelationshipData';
-import { useProjectedMapGraph } from '@/features/map/projection/useProjectedMapGraph';
-import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
+import { useGalleryHomeController } from '@/features/gallery/useGalleryHomeController';
 import type { MediaImage } from '@/types/domain';
 
 export function GalleryHome() {
-  const [viewMode, setViewMode] = useState<'gallery' | 'map'>('gallery');
-  const [activeLocationId, setActiveLocationId] = useState<string | null>(null);
-  const [selectedImage, setSelectedImage] = useState<MediaImage | null>(null);
-  const [showGalleryPanel, setShowGalleryPanel] = useState(false);
-  const [locationImages, setLocationImages] = useState<Map<string, PublicMediaImage[]>>(new Map());
-  const [loadingImages, setLoadingImages] = useState(false);
-  const [bootstrappingGallery, setBootstrappingGallery] = useState(false);
-  const [showLoadingScreen, setShowLoadingScreen] = useState(true);
-  const [nightMode, setNightMode] = useState(() => {
-    const hours = new Date().getHours() + new Date().getMinutes() / 60;
-    return hours < 5.5 || hours > 18.5;
-  });
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showSearch, setShowSearch] = useState(false);
-  const [mapInstance, setMapInstance] = useState<MaplibreMap | null>(null);
-
-  const relationshipData = useMapRelationshipData();
-  const activeProjectId = relationshipData.projectGroups[0]?.projectId ?? null;
-  const isMapMode = viewMode === 'map';
-  const deferredSearchQuery = useDeferredValue(searchQuery);
+  const controller = useGalleryHomeController();
   const isMobileViewport = useMediaQuery('(max-width: 760px)');
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const hours = new Date().getHours() + new Date().getMinutes() / 60;
-      setNightMode(hours < 5.5 || hours > 18.5);
-    }, 60000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    if (viewMode !== 'map') {
-      setShowSearch(false);
-    }
-  }, [viewMode]);
-
-  const fetchLocationImagesMemo = useCallback(async (locationId: string) => {
-    if (locationImages.has(locationId)) return;
-
-    setLoadingImages(true);
-
-    try {
-      const images = await fetchLocationImages(locationId, relationshipData.nodes);
-      setLocationImages((previous) => new Map(previous).set(locationId, images));
-    } catch {
-      // Ignore fetch failures and allow another attempt on the next selection.
-    } finally {
-      setLoadingImages(false);
-    }
-  }, [relationshipData.nodes, locationImages]);
-
-  useEffect(() => {
-    if (!isMapMode || !activeLocationId) return;
-    fetchLocationImagesMemo(activeLocationId);
-  }, [activeLocationId, fetchLocationImagesMemo, isMapMode]);
-
-  useEffect(() => {
-    if (viewMode !== 'gallery') return;
-
-    const missingNodes = relationshipData.nodes.filter((node) => !locationImages.has(node.id));
-    if (missingNodes.length === 0) return;
-
-    let cancelled = false;
-    setBootstrappingGallery(true);
-
-    void Promise.all(
-      missingNodes.map(async (node) => ({
-        id: node.id,
-        images: await fetchLocationImages(node.id, relationshipData.nodes),
-      })),
-    )
-      .then((results) => {
-        if (cancelled) return;
-
-        setLocationImages((previous) => {
-          const next = new Map(previous);
-          results.forEach(({ id, images }) => {
-            if (!next.has(id)) {
-              next.set(id, images);
-            }
-          });
-          return next;
-        });
-      })
-      .catch((error: unknown) => {
-        if (cancelled) return;
-        // Surface the failure in the console without escalating to an
-        // unhandled rejection. The gallery renders empty for missing
-        // locations — there is no toast surface in this route.
-        // eslint-disable-next-line no-console
-        console.error('[GalleryHome] failed to preload gallery media', error);
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setBootstrappingGallery(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [locationImages, relationshipData.nodes, viewMode]);
-
-  const projected = useProjectedMapGraph({
-    map: mapInstance,
-    viewModel: {
-      nodes: relationshipData.nodes,
-      edges: relationshipData.edges,
-    },
-  });
-
-  const activeAnchor = useMemo(
-    () => projected.nodes.find((node) => node.id === activeLocationId) ?? null,
-    [activeLocationId, projected.nodes],
-  );
-
-  const activeCluster = useMemo(
-    () =>
-      relationshipData.mediaClusters.find((cluster) => cluster.locationId === activeLocationId) ?? null,
-    [activeLocationId, relationshipData.mediaClusters],
-  );
-
-  const activeProject = useMemo(
-    () => relationshipData.projectGroups.find((group) => group.projectId === activeProjectId) ?? null,
-    [activeProjectId, relationshipData.projectGroups],
-  );
-
-  const activeNode = useMemo(
-    () => relationshipData.nodes.find((node) => node.id === activeLocationId) ?? null,
-    [activeLocationId, relationshipData.nodes],
-  );
-
-  const currentImages = activeLocationId ? (locationImages.get(activeLocationId) ?? []) : [];
-
-  const filteredRailImages = useMemo(() => {
-    if (!deferredSearchQuery.trim()) return currentImages;
-
-    const query = deferredSearchQuery.toLowerCase();
-
-    return currentImages.filter((image) =>
-      image.caption?.toLowerCase().includes(query) ||
-      image.altText?.toLowerCase().includes(query),
-    );
-  }, [currentImages, deferredSearchQuery]);
-
-  const allCurrentImages = useMemo(() => {
-    if (isMapMode) return currentImages;
-
-    const allImages: PublicMediaImage[] = [];
-    relationshipData.nodes.forEach((node) => {
-      const images = locationImages.get(node.id);
-      if (images) allImages.push(...images);
-    });
-
-    return allImages;
-  }, [currentImages, isMapMode, locationImages, relationshipData.nodes]);
-
-  const showMediaRail = isMapMode && (
-    Boolean(activeLocationId) ||
-    loadingImages ||
-    filteredRailImages.length > 0
-  );
-
-  const handleImageSelect = useCallback((image: MediaImage) => {
-    setSelectedImage(image);
-  }, []);
-
-  const handleMapLocationSelect = useCallback((locationId: string) => {
-    setActiveLocationId(locationId);
-    setShowGalleryPanel(true);
-  }, []);
-
-  const handleViewModeToggle = useCallback(() => {
-    setViewMode((current) => {
-      const next = current === 'gallery' ? 'map' : 'gallery';
-      if (next === 'gallery') {
-        setShowGalleryPanel(false);
-      }
-      return next;
-    });
-  }, []);
-
-  const handleLoadingComplete = useCallback(() => {
-    setShowLoadingScreen(false);
-  }, []);
 
   return (
     <div
@@ -211,51 +23,51 @@ export function GalleryHome() {
         position: 'fixed',
         inset: 0,
         overflow: 'hidden',
-        background: nightMode
+        background: controller.nightMode
           ? 'linear-gradient(180deg, #0a0a1a 0%, #1a1f3a 100%)'
           : 'linear-gradient(180deg, #87CEEB 0%, #FFD9DA 55%, #f85a4e 100%)',
         transition: 'background 2s ease',
       }}
     >
-      {showLoadingScreen && (
-        <LoadingScreen nightMode={nightMode} onComplete={handleLoadingComplete} />
+      {controller.showLoadingScreen && (
+        <LoadingScreen nightMode={controller.nightMode} onComplete={controller.handleLoadingComplete} />
       )}
 
-      {viewMode === 'gallery' && (
+      {controller.viewMode === 'gallery' && (
         <GalleryExperience
-          mediaImages={allCurrentImages as MediaImage[]}
-          nightMode={nightMode}
-          onImageSelect={handleImageSelect}
+          mediaImages={controller.allCurrentImages as MediaImage[]}
+          nightMode={controller.nightMode}
+          onImageSelect={controller.handleImageSelect}
         />
       )}
 
-      {isMapMode && (
+      {controller.isMapMode && (
         <>
           <div className="map-page-stage" style={{ position: 'absolute', inset: 0 }}>
             <MapBase3DView
               className="map-page-base"
-              onMapReady={setMapInstance}
+              onMapReady={controller.setMapInstance}
             />
             <MapProjectionOverlay
-              width={projected.width}
-              height={projected.height}
-              nodes={projected.nodes}
-              edges={projected.edges}
-              activeProjectId={activeProjectId}
-              activeLocationId={activeLocationId}
-              onLocationSelect={handleMapLocationSelect}
+              width={controller.projected.width}
+              height={controller.projected.height}
+              nodes={controller.projected.nodes}
+              edges={controller.projected.edges}
+              activeProjectId={controller.activeProjectId}
+              activeLocationId={controller.activeLocationId}
+              onLocationSelect={controller.handleMapLocationSelect}
             />
-            <MediaClusterLayer cluster={activeCluster} anchor={activeAnchor} />
+            <MediaClusterLayer cluster={controller.activeCluster} anchor={controller.activeAnchor} />
           </div>
 
-          {showMediaRail && (
+          {controller.showMediaRail && (
             <GalleryMediaRail
-              nightMode={nightMode}
-              activeNodeTitle={activeNode?.title ?? 'Select a location'}
-              activeLocationId={activeLocationId}
-              loadingImages={loadingImages}
-              images={filteredRailImages}
-              onImageSelect={handleImageSelect}
+              nightMode={controller.nightMode}
+              activeNodeTitle={controller.activeNode?.title ?? 'Select a location'}
+              activeLocationId={controller.activeLocationId}
+              loadingImages={controller.loadingImages}
+              images={controller.filteredRailImages}
+              onImageSelect={controller.handleImageSelect}
             />
           )}
         </>
@@ -275,7 +87,7 @@ export function GalleryHome() {
             fontFamily: "'Cormorant Garamond', serif",
             fontSize: 'clamp(18px, 2.4vw, 22px)',
             fontWeight: 400,
-            color: nightMode ? 'rgba(200,200,220,0.6)' : 'rgba(60,60,80,0.6)',
+            color: controller.nightMode ? 'rgba(200,200,220,0.6)' : 'rgba(60,60,80,0.6)',
             letterSpacing: '0.15em',
             textTransform: 'uppercase',
             maxWidth: '40vw',
@@ -302,18 +114,18 @@ export function GalleryHome() {
         }}
       >
         <GalleryTopBar
-          nightMode={nightMode}
-          isMapMode={isMapMode}
-          showSearch={showSearch}
-          searchQuery={searchQuery}
-          onSearchToggle={() => setShowSearch((current) => !current)}
-          onSearchChange={setSearchQuery}
-          onViewModeToggle={handleViewModeToggle}
-          onNightModeToggle={() => setNightMode((current) => !current)}
+          nightMode={controller.nightMode}
+          isMapMode={controller.isMapMode}
+          showSearch={controller.showSearch}
+          searchQuery={controller.searchQuery}
+          onSearchToggle={controller.toggleSearch}
+          onSearchChange={controller.setSearchQuery}
+          onViewModeToggle={controller.handleViewModeToggle}
+          onNightModeToggle={controller.toggleNightMode}
         />
       </div>
 
-      {viewMode === 'gallery' && (
+      {controller.viewMode === 'gallery' && (
         <div
           style={{
             position: 'fixed',
@@ -321,14 +133,14 @@ export function GalleryHome() {
             left: 'max(16px, calc(env(safe-area-inset-left) + 16px))',
             zIndex: 30,
             fontSize: '11px',
-            color: nightMode ? 'rgba(200,200,220,0.35)' : 'rgba(60,60,80,0.4)',
+            color: controller.nightMode ? 'rgba(200,200,220,0.35)' : 'rgba(60,60,80,0.4)',
             letterSpacing: '0.06em',
             fontFamily: "'Work Sans', sans-serif",
             pointerEvents: 'none',
             maxWidth: 'min(420px, calc(100vw - 32px))',
           }}
         >
-          {bootstrappingGallery
+          {controller.bootstrappingGallery
             ? 'Loading gallery media…'
             : 'Drag to rotate the view. Click a card to open the full image.'}
         </div>
@@ -341,7 +153,7 @@ export function GalleryHome() {
           right: 'max(16px, calc(env(safe-area-inset-right) + 16px))',
           zIndex: 30,
           fontSize: '11px',
-          color: nightMode ? 'rgba(200,200,220,0.25)' : 'rgba(60,60,80,0.3)',
+          color: controller.nightMode ? 'rgba(200,200,220,0.25)' : 'rgba(60,60,80,0.3)',
           letterSpacing: '0.04em',
           fontFamily: "'Work Sans', sans-serif",
           pointerEvents: 'none',
@@ -350,24 +162,28 @@ export function GalleryHome() {
         © 2026 Trace Scope
       </div>
 
-      {isMapMode && showGalleryPanel && (
+      {controller.isMapMode && controller.showGalleryPanel && (
         <GalleryRelationshipPanel
-          nightMode={nightMode}
-          showMediaRail={showMediaRail}
-          title={activeNode?.title ?? activeProject?.title ?? 'Map relationships'}
-          summary={activeNode?.description ?? activeProject?.summary ?? 'Select a node to inspect the connected media and location context.'}
-          images={showMediaRail ? undefined : currentImages}
-          loadingImages={showMediaRail ? false : loadingImages}
-          onClose={() => setShowGalleryPanel(false)}
-          onImageSelect={handleImageSelect}
+          nightMode={controller.nightMode}
+          showMediaRail={controller.showMediaRail}
+          title={controller.activeNode?.title ?? controller.activeProject?.title ?? 'Map relationships'}
+          summary={
+            controller.activeNode?.description ??
+            controller.activeProject?.summary ??
+            'Select a node to inspect the connected media and location context.'
+          }
+          images={controller.showMediaRail ? undefined : controller.currentImages}
+          loadingImages={controller.showMediaRail ? false : controller.loadingImages}
+          onClose={controller.handleCloseGalleryPanel}
+          onImageSelect={controller.handleImageSelect}
           isMobile={isMobileViewport}
         />
       )}
 
-      {selectedImage && (
+      {controller.selectedImage && (
         <GalleryImageModal
-          image={selectedImage}
-          onClose={() => setSelectedImage(null)}
+          image={controller.selectedImage}
+          onClose={controller.handleCloseImageModal}
         />
       )}
     </div>
