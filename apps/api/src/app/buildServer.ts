@@ -49,6 +49,9 @@ export const buildServer = async (input?: {
   corsOrigins?: string[];
   rateLimitMax?: number;
   rateLimitWindowMs?: number;
+  // BUG-021: forward config.maxUploadBytes into UploadService so the
+  // MAX_UPLOAD_BYTES env var actually takes effect at runtime.
+  maxUploadBytes?: number;
   systemHealthService?: {
     live(): { status: string; checkedAt: string; uptimeSeconds: number };
     ready(): Promise<{ status: string; checkedAt: string; checks: { database: string; storage: string } }>;
@@ -129,7 +132,7 @@ export const buildServer = async (input?: {
   const publicService = new PublicService(publicRepo, storage);
 
   const uploadRepo = createUploadRepository();
-  const uploadService = new UploadService(uploadRepo, storage);
+  const uploadService = new UploadService(uploadRepo, storage, input?.maxUploadBytes);
 
   await server.register(async (adminApp) => {
     adminApp.addHook("preHandler", createRequireAdminSession(input?.authService));

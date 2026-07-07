@@ -90,4 +90,33 @@ describe('loadConfigFrom', () => {
     expect(config.sessionSecret).toBe('dev-secret-change-in-production');
     expect(config.cookieSecure).toBe(false);
   });
+
+  // BUG-035: schema validation for env values that previously cast
+  // through `as` or were passed to plugins unchecked. Each test pins
+  // a specific failure mode that would otherwise surface as silent
+  // misbehavior at runtime.
+
+  it('rejects an unknown LOG_LEVEL', () => {
+    expect(() => loadConfigFrom({ LOG_LEVEL: 'INFO' })).toThrow(/LOG_LEVEL/);
+    expect(() => loadConfigFrom({ LOG_LEVEL: 'verbose' })).toThrow(/LOG_LEVEL/);
+  });
+
+  it('accepts each valid LOG_LEVEL', () => {
+    for (const level of ['fatal', 'error', 'warn', 'info', 'debug']) {
+      expect(loadConfigFrom({ LOG_LEVEL: level }).logLevel).toBe(level);
+    }
+  });
+
+  it('rejects CORS_ORIGINS entries without a scheme', () => {
+    expect(() => loadConfigFrom({ CORS_ORIGINS: 'example.com' })).toThrow(/CORS_ORIGINS/);
+    expect(() =>
+      loadConfigFrom({ CORS_ORIGINS: 'https://ok.example.com,bare-host' }),
+    ).toThrow(/CORS_ORIGINS/);
+  });
+
+  it('rejects non-positive RATE_LIMIT_MAX / RATE_LIMIT_WINDOW_MS', () => {
+    expect(() => loadConfigFrom({ RATE_LIMIT_MAX: '0' })).toThrow(/RATE_LIMIT_MAX/);
+    expect(() => loadConfigFrom({ RATE_LIMIT_MAX: '-5' })).toThrow(/RATE_LIMIT_MAX/);
+    expect(() => loadConfigFrom({ RATE_LIMIT_WINDOW_MS: '0' })).toThrow(/RATE_LIMIT_WINDOW_MS/);
+  });
 });

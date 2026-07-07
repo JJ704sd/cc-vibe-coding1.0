@@ -57,6 +57,20 @@ export function MapBase3DView({ className, onReady, onMapReady }: MapBase3DViewP
           attributionControl: false,
         });
 
+        // BUG-024: assign mapInstance immediately after construction so
+        // the cleanup callback (which fires if the component unmounts
+        // between `new maplibre.Map(...)` and the addControl/on calls
+        // below) can still reach the instance and call .remove().
+        // Without this, a map created in a stale effect run leaks the
+        // WebGL context — visible as canvas accumulation in DevTools
+        // Memory tab when navigating /map rapidly.
+        mapInstance = map;
+
+        if (disposed || !containerRef.current) {
+          map.remove();
+          return;
+        }
+
         map.addControl(
           new maplibre.NavigationControl({
             showCompass: true,
@@ -80,8 +94,6 @@ export function MapBase3DView({ className, onReady, onMapReady }: MapBase3DViewP
             setStatus('error');
           }
         });
-
-        mapInstance = map;
       } catch {
         if (!disposed) {
           setStatus('error');

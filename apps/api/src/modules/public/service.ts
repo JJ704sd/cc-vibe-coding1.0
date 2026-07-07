@@ -32,16 +32,10 @@ export class PublicService {
    * - A media image belonging to a published project's media set
    */
   async isFileReachableFromPublishedContent(fileId: string): Promise<boolean> {
-    const projectCover = await this.repository.findPublishedProjectCover(fileId);
-    if (projectCover) return true;
-
-    const mediaSetCover = await this.repository.findPublishedMediaSetCover(fileId);
-    if (mediaSetCover) return true;
-
-    const mediaImage = await this.repository.findPublishedMediaImage(fileId);
-    if (mediaImage) return true;
-
-    return false;
+    // BUG-022: combined into a single round-trip query (see repository
+    // `findPublishedReferences`) instead of three sequential ones.
+    const { reachable } = await this.repository.findPublishedReferences(fileId);
+    return reachable;
   }
 
   async listProjects(): Promise<{

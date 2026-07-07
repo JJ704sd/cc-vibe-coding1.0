@@ -285,6 +285,27 @@ export function createPublicRepository() {
         [fileId]
       );
     },
+
+    // BUG-022: combined existence check that replaces the previous
+    // 3 sequential repository calls with a single round-trip. We
+    // pass `fileId` three times (one per EXISTS subquery) instead of
+    // issuing three separate queries, eliminating two network/DB
+    // round trips per public file access.
+    async findPublishedReferences(fileId: string): Promise<{ reachable: boolean }> {
+      const pool = getPool();
+      return queryOne<{ reachable: boolean }>(
+        pool,
+        `SELECT (
+           EXISTS(SELECT 1 FROM project WHERE cover_upload_file_id = ? AND status = 'published')
+           OR EXISTS(SELECT 1 FROM media_set ms JOIN project p ON ms.project_id = p.id
+                     WHERE ms.cover_upload_file_id = ? AND p.status = 'published')
+           OR EXISTS(SELECT 1 FROM media_image mi JOIN media_set ms ON mi.media_set_id = ms.id
+                                       JOIN project p ON ms.project_id = p.id
+                     WHERE mi.upload_file_id = ? AND p.status = 'published')
+         ) AS reachable`,
+        [fileId, fileId, fileId],
+      ).then((row) => ({ reachable: Boolean(row?.reachable) }));
+    },
   };
 }
 

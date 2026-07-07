@@ -69,6 +69,7 @@ async function main() {
     corsOrigins: config.corsOrigins,
     rateLimitMax: config.rateLimitMax,
     rateLimitWindowMs: config.rateLimitWindowMs,
+    maxUploadBytes: config.maxUploadBytes,
     systemHealthService,
   });
 

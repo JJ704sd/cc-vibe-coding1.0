@@ -56,6 +56,56 @@ function readCsv(value: string | undefined, fallback: string[]): string[] {
 }
 
 /**
+ * BUG-035: enforce that LOG_LEVEL is one of the values Pino / Fastify
+ * actually accept. Without this, a typo like LOG_LEVEL=INFO (uppercase)
+ * silently falls through to the cast and produces a logger that emits
+ * zero events — much harder to diagnose than a startup error.
+ */
+const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug'] as const;
+function readLogLevel(value: string | undefined): AppConfig['logLevel'] {
+  const raw = value ?? 'info';
+  if (!(LOG_LEVELS as readonly string[]).includes(raw)) {
+    throw new Error(
+      `Invalid LOG_LEVEL "${raw}". Must be one of: ${LOG_LEVELS.join(', ')}`,
+    );
+  }
+  return raw as AppConfig['logLevel'];
+}
+
+/**
+ * BUG-035: CORS_ORIGINS must be a comma-separated list of URLs that
+ * include a scheme. Bare hostnames like "example.com" silently pass
+ * @fastify/cors's origin matcher (it accepts any non-empty string),
+ * which then fails the actual CORS handshake at request time with a
+ * confusing browser error. Fail fast at startup.
+ */
+function readCorsOrigins(value: string | undefined, fallback: string[]): string[] {
+  const items = readCsv(value, fallback);
+  for (const origin of items) {
+    if (!origin.includes('://')) {
+      throw new Error(
+        `Invalid CORS_ORIGINS entry "${origin}". Each origin must be a full URL with scheme (e.g. https://example.com).`,
+      );
+    }
+  }
+  return items;
+}
+
+/**
+ * BUG-035: rate-limit knobs must be positive integers; a non-positive
+ * value silently produces an always-blocked or always-allowed limiter
+ * depending on @fastify/rate-limit's interpretation. Reject at startup.
+ */
+function readPositiveInt(value: number, name: string): number {
+  if (!Number.isFinite(value) || !Number.isInteger(value) || value <= 0) {
+    throw new Error(
+      `Invalid ${name} value ${value}. Must be a positive integer.`,
+    );
+  }
+  return value;
+}
+
+/**
  * BUG-017: SESSION_SECRET must be set explicitly in production. Without
  * this guard, an empty `.env.production` (or a forgotten env var) silently
  * boots the API with a hard-coded fallback string that any reader of the
@@ -112,12 +162,12 @@ export function loadConfigFrom(env: EnvSource): AppConfig {
     cookieSecure: readCookieSecure(env),
     adminBootstrapUsername: optionalEnv(env, 'ADMIN_BOOTSTRAP_USERNAME', 'admin'),
     adminBootstrapPassword: optionalEnv(env, 'ADMIN_BOOTSTRAP_PASSWORD', 'admin123'),
-    corsOrigins: readCsv(env.CORS_ORIGINS, [publicBaseUrl]),
+    corsOrigins: readCorsOrigins(env.CORS_ORIGINS, [publicBaseUrl]),
     trustProxy: readBoolean(env.TRUST_PROXY, true),
-    logLevel: (env.LOG_LEVEL ?? 'info') as AppConfig['logLevel'],
+    logLevel: readLogLevel(env.LOG_LEVEL),
     bodyLimitBytes: readNumber(env.BODY_LIMIT_BYTES, 10 * 1024 * 1024),
-    rateLimitMax: readNumber(env.RATE_LIMIT_MAX, 1000),
-    rateLimitWindowMs: readNumber(env.RATE_LIMIT_WINDOW_MS, 60_000),
+    rateLimitMax: readPositiveInt(readNumber(env.RATE_LIMIT_MAX, 1000), 'RATE_LIMIT_MAX'),
+    rateLimitWindowMs: readPositiveInt(readNumber(env.RATE_LIMIT_WINDOW_MS, 60_000), 'RATE_LIMIT_WINDOW_MS'),
   };
 }
 
