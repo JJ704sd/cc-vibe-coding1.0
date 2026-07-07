@@ -53,31 +53,39 @@ export function GeoMediaLayer({
     []
   );
 
-  const cardsRef = useRef<CardMeshData[]>([]);
+  // C+ fix: anchored and fallback cards now live in separate refs so
+  // their cleanup paths don't trample each other. The previous design
+  // pushed both kinds into `cardsRef`, and the anchored effect's
+  // cleanup wiped the entire array — deleting fallback cards whenever
+  // the anchored prop changed, while the fallback effect had no
+  // cleanup at all, so stale fallback cards accumulated when the
+  // fallback prop changed.
+  const anchoredCardsRef = useRef<CardMeshData[]>([]);
+  const fallbackCardsRef = useRef<CardMeshData[]>([]);
 
-  // Clean up cards on unmount or when placements change
+  // Unmount cleanup: release the useMemo-shared GPU resources only.
+// Per-card dispose is handled by the anchored/fallback effects'
+// own cleanups (which run on unmount along with this one), so we
+// don't double-dispose them here.
   useEffect(() => {
     return () => {
-      cardsRef.current.forEach((card) => {
-        // BUG-012: deep dispose so the textureLoader image (.map) is
-        // released. backMat is intentionally NOT disposed — it is the
-        // useMemo-shared darkMaterial reused across every card.
-        disposeMaterialDeep(card.imgMat);
-        card.group.removeFromParent();
-      });
-      cardsRef.current = [];
+      // C+ fix: darkMaterial was a useMemo([]) shared across every
+      // card; without explicit dispose the Three.js shader-program
+      // cache keeps the compiled program alive after unmount.
+      darkMaterial.dispose();
+      // Same story for the shared PlaneGeometry — kept alive by the
+      // useMemo([]) reference even after the last mesh referencing
+      // it has been disposed.
+      sharedGeometry.dispose();
     };
-  }, []);
+  }, [darkMaterial, sharedGeometry]);
 
   // Build anchored cards
   useEffect(() => {
-    // Remove old anchored cards
-    cardsRef.current.forEach((card) => {
-      // Same deep-dispose pattern as the unmount cleanup above.
-      disposeMaterialDeep(card.imgMat);
-      card.group.removeFromParent();
-    });
-    cardsRef.current = [];
+    // Hold the cards we create this run in a local const so the
+    // cleanup closure disposes exactly this batch — even if the next
+    // effect run has already replaced anchoredCardsRef.current.
+    const createdCards: CardMeshData[] = [];
 
     anchored.forEach((placement) => {
       const { mediaImage } = placement;
@@ -135,12 +143,30 @@ export function GeoMediaLayer({
       group.lookAt(0, group.position.y, 0);
 
       scene.add(group);
-      cardsRef.current.push({ group, frontMesh, imgMat, backMat: darkMaterial });
+      createdCards.push({ group, frontMesh, imgMat, backMat: darkMaterial });
     });
+
+    anchoredCardsRef.current = createdCards;
+
+    return () => {
+      for (const card of createdCards) {
+        disposeMaterialDeep(card.imgMat);
+        card.group.removeFromParent();
+      }
+      // If we still own anchoredCardsRef.current (no later effect has
+      // overwritten it), drop the reference so the GC can collect.
+      if (anchoredCardsRef.current === createdCards) {
+        anchoredCardsRef.current = [];
+      }
+    };
   }, [anchored, sampler, scene, textureLoader, sharedGeometry, darkMaterial]);
 
-  // Build fallback cards
+  // Build fallback cards (with cleanup — was missing before, caused
+  // stale fallback cards to accumulate when the fallback prop changed,
+  // AND the anchored effect's cleanup previously wiped both kinds).
   useEffect(() => {
+    const createdCards: CardMeshData[] = [];
+
     fallback.forEach((placement, index) => {
       const { mediaImage } = placement;
 
@@ -188,8 +214,20 @@ export function GeoMediaLayer({
       group.lookAt(0, group.position.y, 0);
 
       scene.add(group);
-      cardsRef.current.push({ group, frontMesh, imgMat, backMat: darkMaterial });
+      createdCards.push({ group, frontMesh, imgMat, backMat: darkMaterial });
     });
+
+    fallbackCardsRef.current = createdCards;
+
+    return () => {
+      for (const card of createdCards) {
+        disposeMaterialDeep(card.imgMat);
+        card.group.removeFromParent();
+      }
+      if (fallbackCardsRef.current === createdCards) {
+        fallbackCardsRef.current = [];
+      }
+    };
   }, [fallback, scene, textureLoader, sharedGeometry, darkMaterial]);
 
   return null;
