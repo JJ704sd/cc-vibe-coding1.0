@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { createSkyBackground } from '@/components/site/SkyBackground';
 import { computeCardOpacity, createPlaceholderTexture } from '@/features/gallery/gallerySceneMath';
+import { disposeMaterialDeep, disposeSkyDome } from '@/lib/utils/threeDispose';
 import type { MediaImage } from '@/types/domain';
 
 interface GalleryExperienceProps {
@@ -79,6 +80,14 @@ function buildCards(params: {
     side: THREE.FrontSide,
   });
   const groups: THREE.Group[] = [];
+  // BUG-012: track every TextureLoader instance so cleanup can release them
+  // even if the onLoad callback later swapped material.map to a different
+  // texture instance (the original `texture` reference would otherwise leak).
+  const texturesToDispose: THREE.Texture[] = [];
+  // Guard against the async onLoad callback firing AFTER cleanup has disposed
+  // the texture — otherwise we'd attach a disposed texture to material.map and
+  // trigger WebGL errors the next frame.
+  let disposed = false;
 
   function add(img: MediaImage, pos: THREE.Vector3) {
     const group = new THREE.Group();
@@ -93,6 +102,7 @@ function buildCards(params: {
           // Replace the placeholder with the real texture once the network
           // load resolves. Failed loads keep the placeholder so the card
           // never collapses to an empty white square.
+          if (disposed) return;
           loaded.colorSpace = THREE.SRGBColorSpace;
           material.map = loaded;
           material.needsUpdate = true;
@@ -105,6 +115,7 @@ function buildCards(params: {
         },
       );
       texture.colorSpace = THREE.SRGBColorSpace;
+      texturesToDispose.push(texture);
       material = new THREE.MeshStandardMaterial({
         map: texture,
         roughness: 0.4,
@@ -163,12 +174,15 @@ function buildCards(params: {
   });
 
   const cleanup = () => {
+    disposed = true;
     groups.forEach((group) => {
       group.traverse((obj) => {
         if (obj instanceof THREE.Mesh) {
           obj.geometry?.dispose();
           if (obj.material instanceof THREE.Material) {
-            obj.material.dispose();
+            // BUG-012: deep dispose so .map (TextureLoader image + placeholder
+            // CanvasTexture) and any other map slots are released too.
+            disposeMaterialDeep(obj.material);
           }
         }
       });
@@ -176,6 +190,10 @@ function buildCards(params: {
     });
     geo.dispose();
     darkMat.dispose();
+    // Dispose the initial TextureLoader instance(s). Even if onLoad swapped
+    // material.map, the original `texture` we created still owns a GPU
+    // resource until we release it explicitly here.
+    texturesToDispose.forEach((t) => t.dispose());
   };
 
   return { cleanup, groups };
@@ -416,6 +434,12 @@ export function GalleryExperience({
       mapGeo.dispose();
       mapMat.dispose();
       mapTex.dispose();
+      // BUG-011: dispose the sky dome. The ShaderMaterial compiles a heavy
+      // program (29-260 lines of fragment shader) that lives in WebGL's
+      // program cache keyed by material UUID — it only goes away on
+      // material.dispose(). Leaving it leaks both GPU memory and the
+      // shader program itself across mount/unmount cycles.
+      disposeSkyDome(skyMesh, scene);
       renderer.dispose();
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);

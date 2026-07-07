@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import type { AnchoredMediaPlacement, FallbackMediaPlacement } from '@/features/gallery/useCurvedMapProjection';
 import type { CurvedMapSampler } from './CurvedMapSurface';
 import type { MediaImage } from '@/types/domain';
+import { disposeMaterialDeep } from '@/lib/utils/threeDispose';
 
 const CARD_ASPECT_X = 4;
 const CARD_ASPECT_Y = 3;
@@ -58,8 +59,10 @@ export function GeoMediaLayer({
   useEffect(() => {
     return () => {
       cardsRef.current.forEach((card) => {
-        card.imgMat.dispose();
-        card.backMat.dispose();
+        // BUG-012: deep dispose so the textureLoader image (.map) is
+        // released. backMat is intentionally NOT disposed — it is the
+        // useMemo-shared darkMaterial reused across every card.
+        disposeMaterialDeep(card.imgMat);
         card.group.removeFromParent();
       });
       cardsRef.current = [];
@@ -70,8 +73,8 @@ export function GeoMediaLayer({
   useEffect(() => {
     // Remove old anchored cards
     cardsRef.current.forEach((card) => {
-      card.imgMat.dispose();
-      card.backMat.dispose();
+      // Same deep-dispose pattern as the unmount cleanup above.
+      disposeMaterialDeep(card.imgMat);
       card.group.removeFromParent();
     });
     cardsRef.current = [];

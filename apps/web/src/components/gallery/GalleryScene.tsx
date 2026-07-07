@@ -4,6 +4,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { MediaImage } from '@/types/domain';
 import { createSkyBackground } from '@/components/site/SkyBackground';
 import { useGalleryProjection } from '@/features/gallery/useGalleryProjection';
+import { disposeMaterialDeep, disposeSkyDome } from '@/lib/utils/threeDispose';
 
 const CARD_SIZE = 280;
 const MAX_ROWS = 4;
@@ -295,7 +296,19 @@ export function GalleryScene({
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', onResize);
+      // BUG-012: deep-dispose card materials (front + back textures too)
+      // before tearing down the scene. cardDataRef keeps the front image
+      // material and the back info material; their .map textures were
+      // created by textureLoader.load / createBackTexture and were never
+      // released previously.
+      cardDataRef.current.forEach((data) => {
+        disposeMaterialDeep(data.imgMat);
+        disposeMaterialDeep(data.backMat);
+      });
+      cardDataRef.current = [];
       controls.dispose();
+      // BUG-011: release the sky dome before disposing the renderer.
+      disposeSkyDome(skyMesh, scene);
       renderer.dispose();
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
@@ -328,8 +341,8 @@ export function GalleryScene({
 
     // Clear existing cards and dispose textures/materials
     cardDataRef.current.forEach((data) => {
-      data.imgMat.dispose();
-      data.backMat.dispose();
+      disposeMaterialDeep(data.imgMat);
+      disposeMaterialDeep(data.backMat);
     });
     while (pivot.children.length > 0) {
       pivot.remove(pivot.children[0]);
